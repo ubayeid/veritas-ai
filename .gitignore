@@ -1,0 +1,106 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+pip-wheel-metadata/
+
+# Virtual environments
+.env
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# dotenv and secrets
+.env
+.env.*
+credentials.json
+secret_*.json
+
+# Databases
+*.sqlite3
+*.db
+
+# FAISS / vector indexes and large binary indexes
+**/faiss/*.index
+**/faiss/*.index.*
+**/faiss/*.index_summary.json
+*.index
+*.index_summary.json
+*.idx
+*.bin
+*.npy
+
+# Neo4j and local DB data
+neo4j/data/
+neo4j/*.db
+
+# Large data / processed outputs (adjust if you track these intentionally)
+data/processed/
+data/vector/
+
+# Model weights / caches
+*.ckpt
+*.pt
+*.pth
+transformers_cache/
+hf_cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Misc
+.envrc
+coverage.xml
+
+# Windows thumbnail cache
+Thumbs.db
+
+# Allow local overrides: uncomment to ignore local config
+# local_settings.py
+
+PRESENTATION.md

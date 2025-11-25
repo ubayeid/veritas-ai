@@ -1,0 +1,17 @@
+{
+  "num_vectors": 4751,
+  "dimension": 1536,
+  "index_type": "IndexFlatIP",
+  "distance_metric": "Inner Product (Cosine Similarity)",
+  "source_files": [
+    "classifications_CSETv0_embeddings.json",
+    "classifications_CSETv1_Annotator-1_embeddings.json",
+    "classifications_CSETv1_Annotator-2_embeddings.json",
+    "classifications_CSETv1_Annotator-3_embeddings.json",
+    "classifications_CSETv1_embeddings.json",
+    "classifications_GMF_embeddings.json",
+    "classifications_MIT_embeddings.json",
+    "incidents_embeddings.json"
+  ],
+  "num_source_files": 8
+}

@@ -1,0 +1,10 @@
+{
+  "num_vectors": 459,
+  "dimension": 1536,
+  "index_type": "IndexFlatIP",
+  "distance_metric": "Inner Product (Cosine Similarity)",
+  "source_files": [
+    "gdpr_embeddings.json"
+  ],
+  "num_source_files": 1
+}

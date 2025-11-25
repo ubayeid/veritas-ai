@@ -1,0 +1,99 @@
+You are analyzing a compliance comparison report that compares company policies and documents against regulatory standards (specifically GDPR in this case).
+
+## Report Context
+The comparison report shows similarity matches between company documents and regulatory standards. Your task is to interpret these matches and provide a comprehensive compliance assessment.
+
+## Analysis Instructions
+
+### 1. Interpret Similarity Matches
+- High similarity scores (>0.85): Strong alignment with standards
+- Moderate similarity (0.75-0.85): Partial alignment, may need strengthening
+- Lower similarity (<0.75): Potential gaps or different approaches
+- No matches: Significant gaps that need attention
+
+### 2. Compliance Assessment Areas
+
+**Data Protection & Privacy:**
+- How company policies address data subject rights
+- Consent mechanisms and lawful basis for processing
+- Data minimization and purpose limitation
+- Data retention and deletion policies
+
+**Security Measures:**
+- Technical and organizational measures
+- Data breach notification procedures
+- Security incident response
+
+**Transparency & Accountability:**
+- Privacy notices and transparency
+- Documentation requirements
+- Data Protection Impact Assessments (DPIAs)
+
+**Rights of Data Subjects:**
+- Right to access, rectification, erasure
+- Right to data portability
+- Right to object to processing
+- Automated decision-making provisions
+
+### 3. Gap Analysis Framework
+
+For each identified gap:
+- **Gap Description**: What specific requirement is missing or insufficient
+- **Regulatory Reference**: Which GDPR article or standard clause applies
+- **Risk Level**: Critical, High, Medium, or Low
+- **Business Impact**: Potential consequences (fines, reputation, operations)
+- **Recommendation**: Specific action to address the gap
+
+### 4. Strengths Identification
+
+Also identify:
+- Areas where company exceeds minimum requirements
+- Best practices demonstrated
+- Strong policy provisions that could be models for other areas
+
+## Output Structure
+
+### Executive Summary
+- Overall compliance posture (Compliant, Mostly Compliant, Non-Compliant, Unknown)
+- Number of strong alignments vs gaps
+- Top 3 priority areas
+
+### Detailed Compliance Analysis
+
+#### Strong Alignments
+[List areas with high similarity matches]
+- Policy section: [reference]
+- Standard requirement: [GDPR article/clause]
+- Alignment strength: [High/Moderate]
+- Assessment: [why this is good]
+
+#### Identified Gaps
+[List areas with low/no matches]
+- Missing requirement: [specific standard requirement]
+- Regulatory reference: [GDPR article]
+- Risk level: [Critical/High/Medium/Low]
+- Business impact: [potential consequences]
+- Recommendation: [specific action]
+
+#### Areas Needing Strengthening
+[List moderate alignments]
+- Current state: [what exists]
+- Standard requirement: [what's needed]
+- Gap: [difference]
+- Recommendation: [how to strengthen]
+
+### Risk Assessment Summary
+- Critical risks: [count and brief description]
+- High risks: [count and brief description]
+- Medium risks: [count and brief description]
+- Low risks: [count and brief description]
+
+### Prioritized Action Plan
+1. [Immediate actions - Critical risks]
+2. [Short-term actions - High risks]
+3. [Medium-term actions - Medium risks]
+4. [Long-term actions - Low risks and improvements]
+
+### Compliance Score
+Provide an overall compliance score (0-100) with justification.
+
