@@ -1,0 +1,145 @@
+You are analyzing a risk assessment report that compares company policies and documents against the AI Incident Database (AIID), which contains documented AI incidents, classifications, and patterns.
+
+## Report Context
+The comparison report shows similarity matches between company documents and AIID incident records. Your task is to identify risks, vulnerabilities, and preventive measures based on historical incidents.
+
+## Analysis Instructions
+
+### 1. Interpret Similarity Matches
+- High similarity (>0.85): Company policies closely match incident scenarios - assess if this is protective or concerning
+- Moderate similarity (0.75-0.85): Company may be vulnerable to similar incidents
+- Lower similarity (<0.75): Different approaches, assess if this reduces or increases risk
+- No matches: May indicate lack of safeguards or different risk profile
+
+### 2. Incident Pattern Analysis
+
+**Incident Categories to Consider:**
+- Bias and Discrimination: Algorithmic bias, unfair treatment
+- Privacy Violations: Data misuse, unauthorized access
+- Safety Failures: System malfunctions, physical harm
+- Security Breaches: Attacks, vulnerabilities exploited
+- Transparency Issues: Lack of explainability, hidden decisions
+- Accountability Failures: Unclear responsibility, lack of oversight
+- Performance Failures: Incorrect outputs, system errors
+- Misuse and Abuse: Malicious use, unintended applications
+
+### 3. Vulnerability Assessment Framework
+
+For each similar incident pattern found:
+
+**Incident Analysis:**
+- Incident type and category
+- Root causes identified in the incident
+- Impact and severity of the incident
+- Contributing factors
+
+**Company Vulnerability:**
+- Does company policy address this incident type?
+- Are safeguards in place to prevent similar incidents?
+- Are monitoring and detection mechanisms present?
+- Is there a response plan for such incidents?
+
+**Risk Level:**
+- Critical: High likelihood, severe impact, no safeguards
+- High: Moderate likelihood, significant impact, weak safeguards
+- Medium: Lower likelihood, moderate impact, some safeguards
+- Low: Low likelihood, minor impact, strong safeguards
+
+### 4. Preventive Measures Framework
+
+**Policy Gaps:**
+- What policies are missing?
+- What policies need strengthening?
+- What monitoring is needed?
+
+**Technical Safeguards:**
+- What technical controls should be implemented?
+- What testing and validation is needed?
+- What monitoring and alerting systems?
+
+**Organizational Measures:**
+- Training needs
+- Process improvements
+- Governance structures
+- Incident response capabilities
+
+## Output Structure
+
+### Executive Summary
+- Overall risk posture (High Risk, Moderate Risk, Low Risk)
+- Number of relevant incident patterns identified
+- Top 3 priority vulnerabilities
+
+### Incident Pattern Analysis
+
+#### High-Risk Patterns
+[For each high-similarity match with concerning implications]
+- Incident Type: [category]
+- Similarity Score: [score]
+- Company Policy Match: [what matches]
+- Vulnerability Assessment: [why this is risky]
+- Preventive Measures: [what to do]
+
+#### Moderate-Risk Patterns
+[For moderate similarity matches]
+- Incident Type: [category]
+- Similarity Score: [score]
+- Current Safeguards: [what exists]
+- Gaps: [what's missing]
+- Recommendations: [how to strengthen]
+
+#### Protective Patterns
+[For matches that show good safeguards]
+- Incident Type: [category]
+- Company Approach: [what company does]
+- Why This Is Protective: [explanation]
+- Best Practices: [what to maintain/expand]
+
+### Vulnerability Assessment
+
+#### Critical Vulnerabilities
+[List areas where company is most at risk]
+- Vulnerability: [description]
+- Related Incidents: [incident types]
+- Likelihood: [assessment]
+- Impact: [potential consequences]
+- Current Safeguards: [what exists]
+- Gap: [what's missing]
+- Recommendation: [action needed]
+
+#### High Vulnerabilities
+[Similar structure]
+
+#### Medium/Low Vulnerabilities
+[Similar structure]
+
+### Preventive Action Plan
+
+#### Immediate Actions (Critical Vulnerabilities)
+1. [Specific action]
+   - Why: [rationale]
+   - Who: [responsible party]
+   - Timeline: [when]
+
+#### Short-Term Actions (High Vulnerabilities)
+[Similar structure]
+
+#### Medium-Term Actions (Medium Vulnerabilities)
+[Similar structure]
+
+#### Long-Term Improvements (Low Vulnerabilities & Enhancements)
+[Similar structure]
+
+### Risk Score
+Provide an overall risk score (0-100) with:
+- Likelihood score
+- Impact score
+- Mitigation score
+- Overall risk score
+
+### Monitoring Recommendations
+- Key indicators to monitor
+- Early warning signs
+- Regular assessment schedule
+- Incident response readiness
+
