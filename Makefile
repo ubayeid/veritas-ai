@@ -4,7 +4,7 @@
 # NOTE: This Makefile is for Linux/Mac/WSL systems
 # For Windows PowerShell, use build.ps1 instead
 
-.PHONY: help install venv clean clean-venv all process-graph process-vector build-faiss build-faiss-only build-neo4j setup-neo4j-docker check-neo4j get-windows-ip add-embeddings link-relationships setup complete start-web-app stop-web-app run-agent
+.PHONY: help install venv clean clean-venv all process-graph process-vector build-faiss build-faiss-only build-neo4j setup-neo4j-docker check-neo4j get-windows-ip add-embeddings link-relationships setup complete start-web-app stop-web-app run-agent run-evaluation
 
 # Default target
 .DEFAULT_GOAL := help
@@ -83,6 +83,7 @@ help:
 	@echo "  make start-web-app    - Start web application (API + frontend)"
 	@echo "  make stop-web-app     - Stop web application servers"
 	@echo "  make run-agent        - Run agentic system interactively"
+	@echo "  make run-evaluation  - Run search evaluation framework"
 	@echo "  make clean            - Clean processed data and databases"
 	@echo "  make test             - Test the system"
 	@echo ""
@@ -726,4 +727,26 @@ run-agent: check-env
 	echo "Using Python: $$VENV_PYTHON"; \
 	echo ""; \
 	cd "$(ROOT_DIR)" && "$$VENV_PYTHON" backend/agentic/run_agent.py
+
+# Run search evaluation framework
+run-evaluation: check-env
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Running Search Evaluation Framework..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@if [ -d "$(VENV_DIR)" ]; then \
+		if [ -x "$(ROOT_DIR)/$(VENV_DIR)/bin/python3" ]; then \
+			VENV_PYTHON="$(ROOT_DIR)/$(VENV_DIR)/bin/python3"; \
+		elif [ -x "$(ROOT_DIR)/$(VENV_DIR)/bin/python" ]; then \
+			VENV_PYTHON="$(ROOT_DIR)/$(VENV_DIR)/bin/python"; \
+		else \
+			VENV_PYTHON="$(PYTHON_CMD)"; \
+		fi; \
+	else \
+		echo "⚠ Warning: Virtual environment not found. Creating one..."; \
+		$(MAKE) venv; \
+		VENV_PYTHON="$(ROOT_DIR)/$(VENV_DIR)/bin/python3"; \
+	fi; \
+	echo "Using Python: $$VENV_PYTHON"; \
+	echo ""; \
+	cd "$(ROOT_DIR)" && "$$VENV_PYTHON" backend/evaluation/evaluate_search.py $(ARGS)
 

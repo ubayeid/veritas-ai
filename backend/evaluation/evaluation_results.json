@@ -1,0 +1,503 @@
+{
+  "results": {
+    "vector": [
+      {
+        "query": "What are the privacy policies?",
+        "method": "vector",
+        "execution_time_ms": 34114.60131199419,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 13645.840524797677,
+        "contextualized_answer": "Meta's privacy policy covers several key areas related to the collection, use, sharing, and retention of user information. \n\nThe policy explains that Meta collects various types of information such as device signals, information shared through device settings, location-related information, IP address, and information from cookies, partners, vendors, and third parties (Source 2). This information is used to personalize user experiences and ads, with the policy update on this going into effect on December 16, 2025 (Source 1).\n\nMeta's privacy policy also provides details on how users can manage their data, including options to port, download, or delete their information (Source 4). The company retains user information as long as it is needed to provide its products, comply with legal obligations, or protect its interests or those of others (Source 4).\n\nMeta does not sell user information to anyone and has rules in place for how partners and third parties can use and disclose the information it provides (Source 7). The company may also access, preserve, use, and share user information in response to legal requests, in accordance with applicable law, or to promote safety, security, and integrity (Source 6).\n\nAny changes to the privacy policy will be communicated to users, giving them the opportunity to review the revised policy (Source 6). \n\nFor more specific details or concerns, users are encouraged to read the full policy or contact Meta's Data Protection Officer or their local Data Protection Authority (Source 4).",
+        "answer_length": 1537,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.4394572824239731,
+        "result_diversity": null,
+        "sources": {
+          "company": 8
+        }
+      },
+      {
+        "query": "Find GDPR articles about data minimization",
+        "method": "vector",
+        "execution_time_ms": 32392.741436997312,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 12957.096574798925,
+        "contextualized_answer": "The General Data Protection Regulation (GDPR) contains several articles that discuss the principle of data minimization. This principle requires that only personal data necessary for each specific purpose of the processing are processed. This applies to the amount of personal data collected, the extent of their processing, the period of their storage, and their accessibility (Source 1).\n\nData minimization is also emphasized in the context of processing for archiving purposes in the public interest, scientific or historical research purposes, or statistical purposes. Such processing should be subject to appropriate safeguards, including technical and organizational measures, to ensure respect for the principle of data minimization (Source 2, Source 4).\n\nThe GDPR also mentions the use of pseudonymisation as a measure designed to implement data-protection principles, including data minimization (Source 1, Source 7). Pseudonymisation allows for general analysis while ensuring that additional information for attributing the personal data to a specific data subject is kept separately (Source 7).\n\nFurthermore, the GDPR stipulates that personal data should be adequate, relevant, and limited to what is necessary in relation to the purposes for which they are processed, which is a direct reference to the principle of data minimization (Source 5).\n\nIn terms of compliance, adherence to approved codes of conduct or approved certification mechanisms may be used to demonstrate compliance with the obligations of the controller, which would include data minimization (Source 3).\n\nFinally, it's worth noting that the principles of data protection, including data minimization, do not apply to anonymous information or to personal data rendered anonymous in such a manner that the data subject is no longer identifiable (Source 8).",
+        "answer_length": 1838,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.49874018132686615,
+        "result_diversity": null,
+        "sources": {
+          "standards": 8
+        }
+      },
+      {
+        "query": "What clauses address GDPR Article 5?",
+        "method": "vector",
+        "execution_time_ms": 18786.96656000102,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 7514.786624000408,
+        "contextualized_answer": "GDPR Article 5 pertains to the principles relating to the processing of personal data. From the search results, it appears that several clauses and articles address or reference GDPR Article 5.\n\nAccording to Source 1, Article 23 allows for restrictions on the obligations and rights provided for in Article 5, provided these restrictions respect fundamental rights and freedoms and are necessary for purposes such as national security, defence, and public security.\n\nSource 2 mentions Article 5 of Regulation (EU) No 182/2011, which seems to be referenced in conjunction with Article 8 of the same regulation. However, the specific context or implications of this reference are not clear from the provided information.\n\nSource 3 lists several aspects of this regulation, such as fair and transparent processing, the legitimate interests pursued by controllers, the collection and pseudonymisation of personal data, and the rights of data subjects, which could be related to the principles outlined in Article 5.\n\nSource 4 suggests that Member States may introduce specific provisions to adapt the application of the rules of this Regulation with regard to processing for compliance with points (c) and (e) of paragraph 1.\n\nSource 5 discusses the lawful basis for processing personal data, which could be relevant to Article 5's principles on lawful, fair, and transparent processing.\n\nSource 6 refers to data protection certification mechanisms for demonstrating compliance with this Regulation, which may include compliance with Article 5's principles.\n\nHowever, without the full text of GDPR Article 5 or more specific search results, it's difficult to provide a comprehensive answer to your query. Further research into the specific provisions of GDPR Article 5 and how they are addressed in company policies, incident databases, and regulatory standards might be helpful.",
+        "answer_length": 1875,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.5942404046654701,
+        "result_diversity": null,
+        "sources": {
+          "standards": 8
+        }
+      },
+      {
+        "query": "Find incidents related to data breaches",
+        "method": "vector",
+        "execution_time_ms": 41018.567435996374,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 16407.42697439855,
+        "contextualized_answer": "Summary: \nSeveral incidents related to data breaches have been identified, including a significant breach involving an AI-powered call center platform in the Middle East and another incident where a dataset used to train large language models allegedly contained live API keys and authentication credentials. These breaches pose risks such as identity theft, unauthorized data access, and potential financial fraud.\n\nDetails: \nAccording to Source 1, an AI-powered call center platform in the Middle East experienced a significant data breach, allegedly exposing over 10 million conversations between consumers, operators, and AI agents. Attackers reportedly accessed the platform\u2019s management dashboard, stealing sensitive data, including national ID documents. The breach poses reported risks such as phishing, identity theft, and other forms of cybercrime.\n\nSource 6 describes another incident where a dataset used to train large language models allegedly contained 12,000 live API keys and authentication credentials. Some of these were reportedly still active and allowed unauthorized access. The affected credentials could have been exploited for unauthorized data access, service disruptions, financial fraud, and a variety of other malicious uses.\n\nImplications: \nThese incidents highlight the risks associated with data breaches, particularly in the context of AI systems and platforms. They underscore the importance of robust security measures to protect sensitive data and prevent unauthorized access. \n\nMissing Information: \nWhile these incidents provide some insight into data breaches related to AI, the search results do not provide comprehensive information on all incidents of this nature. Additional searches focusing on specific industries, AI applications, or types of data breaches may provide a more complete understanding of the issue.",
+        "answer_length": 1858,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.4897928833961487,
+        "result_diversity": null,
+        "sources": {
+          "aiid": 8
+        }
+      },
+      {
+        "query": "What are the compliance gaps?",
+        "method": "vector",
+        "execution_time_ms": 30756.814798995038,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 12302.725919598015,
+        "contextualized_answer": "Summary: The compliance gaps identified in the search results primarily relate to data security, GDPR compliance, and issues arising from AI deployment. \n\nDetailed Explanation:\n\n1. Data Security: According to Source 1 (classifications_GMF), there are significant gaps in how companies manage and communicate about data security. Most companies (73%) have not published any information on how they manage security vulnerabilities, and 64% have not provided clear information about their use of encryption. Additionally, about half (45%) allow weak passwords, which is a security vulnerability.\n\n2. GDPR Compliance: Sources 2, 3, 4, and 5 (GDPR) highlight gaps in the implementation of appropriate measures for data protection, monitoring of compliance, and record-keeping of processing activities. These gaps could potentially lead to non-compliance with GDPR regulations.\n\n3. AI Deployment: Sources 6, 7, and 8 (classifications_MIT) indicate compliance gaps related to AI system safety, failures, and limitations, as well as issues of discrimination and toxicity. These gaps are identified as risks in the post-deployment phase of AI systems.\n\nRelevance and Implications: These compliance gaps could lead to regulatory penalties, reputational damage, and operational risks. Addressing these gaps is crucial for ensuring data security, maintaining regulatory compliance, and mitigating risks associated with AI deployment.\n\nAdditional Information: The search results do not provide specific details about the companies or sectors where these compliance gaps exist. Further searches could be conducted to identify specific industries or companies with these compliance gaps, and to find best practices for addressing these gaps.",
+        "answer_length": 1726,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.38713111728429794,
+        "result_diversity": null,
+        "sources": {
+          "aiid": 4,
+          "standards": 4
+        }
+      },
+      {
+        "query": "Show me information about user consent",
+        "method": "vector",
+        "execution_time_ms": 36951.22869699844,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 14780.491478799377,
+        "contextualized_answer": "User consent, particularly in the context of data processing, is a crucial aspect of GDPR compliance. It refers to a clear and unambiguous indication of the data subject's agreement to the processing of personal data relating to them. This could be through a written or oral statement, or any other conduct that clearly indicates the data subject's acceptance of the proposed processing of their personal data. Notably, silence, pre-ticked boxes, or inactivity do not constitute consent [Source 1].\n\nConsent must cover all processing activities carried out for the same purpose or purposes. If the processing has multiple purposes, consent should be given for all of them [Source 1]. Importantly, the data subject has the right to withdraw their consent at any time, and it should be as easy to withdraw as to give consent [Source 2].\n\nFor consent to be considered valid, it must be informed, freely given, and demonstrable. The data subject should be aware of the identity of the controller and the purposes of the processing for which the personal data are intended [Source 3]. The controller must be able to demonstrate that the data subject has consented to the processing of their personal data [Source 5].\n\nIn the context of children, any information and communication about data processing should be in clear and plain language that the child can easily understand [Source 6]. Moreover, the consent of the holder of parental responsibility is not necessary in the context of preventive or counselling services offered directly to a child [Source 4].\n\nIt's also important to note that consent is presumed not to be freely given if it does not allow separate consent to be given to different personal data processing operations, or if the performance of a contract is dependent on the consent despite such consent not being necessary for such performance [Source 7].\n\nIn the context of AI applications, user consent is also critical. For example, apps that collect sensitive data should request proper authorization in the user agreement. Lack of transparency in how AI works and how user data is used can lead to issues related to unauthorized data use [Source 8].",
+        "answer_length": 2170,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.4848252274096012,
+        "result_diversity": null,
+        "sources": {
+          "standards": 7,
+          "aiid": 1
+        }
+      },
+      {
+        "query": "What are the data processing requirements?",
+        "method": "vector",
+        "execution_time_ms": 29742.472656995233,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 11896.989062798093,
+        "contextualized_answer": "Data processing requirements under the GDPR include the following:\n\n1. **Consent**: Data subjects must give consent to the processing of their personal data for one or more specific purposes (Source 1).\n2. **Necessity**: Processing may be necessary for the performance of a contract, compliance with a legal obligation, protection of vital interests, performance of a task carried out in the public interest, or for the purposes of legitimate interests pursued by the controller (Source 1).\n3. **Data Protection by Design and Default**: When developing and designing products, services, and applications that process personal data, the right to data protection should be taken into account (Source 2).\n4. **Rights of Data Subjects**: Data subjects have the right to data portability, the right to withdraw consent at any time, the right to lodge a complaint with a supervisory authority, and the right to be informed about the provision of personal data (Source 3).\n5. **Data Minimization and Accuracy**: Personal data should be adequate, relevant, and limited to what is necessary for the purposes for which they are processed. Inaccurate data should be rectified or deleted (Source 4).\n6. **Security**: Personal data should be processed in a manner that ensures appropriate security and confidentiality, including for preventing unauthorized access (Source 4, Source 6).\n7. **Legal Basis**: The basis for processing should be laid down by Union law or Member State law to which the controller is subject (Source 5).\n\nThese requirements ensure the protection of the rights and freedoms of data subjects while allowing for necessary data processing activities. Non-compliance could lead to penalties under the GDPR.",
+        "answer_length": 1715,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.5350156873464584,
+        "result_diversity": null,
+        "sources": {
+          "standards": 8
+        }
+      },
+      {
+        "query": "Find clauses about data retention",
+        "method": "vector",
+        "execution_time_ms": 35270.780327002285,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 14108.312130800914,
+        "contextualized_answer": "Summary: \nThe General Data Protection Regulation (GDPR) provides several clauses regarding data retention. These clauses primarily emphasize that personal data should be kept for no longer than necessary for the purposes for which they are processed. However, exceptions are made for data stored for archiving purposes in the public interest, scientific or historical research purposes, or statistical purposes. \n\nDetailed Explanation with Citations:\nAccording to Source 1 and Source 2, the GDPR stipulates that personal data should be kept in a form that allows identification of data subjects for no longer than necessary for the processing purposes. However, personal data may be stored for longer periods if the data will be processed solely for archiving purposes in the public interest, scientific or historical research purposes, or statistical purposes. The GDPR also requires that the period for which the personal data are stored is limited to a strict minimum and that time limits should be established by the controller for erasure or for a periodic review.\n\nSource 4 and Source 6 further elaborate on the safeguards and derogations relating to processing for archiving purposes in the public interest, scientific or historical research purposes, or statistical purposes. These safeguards should ensure that technical and organisational measures are in place to respect the principle of data minimisation.\n\nSource 3 and Source 7 discuss the possibility for the controller or processor to use standard data-protection clauses adopted by the Commission or by a supervisory authority. These clauses should not prevent controllers or processors from including them in a wider contract or from adding other clauses or additional safeguards provided they do not contradict the standard contractual clauses or prejudice the fundamental rights or freedoms of the data subjects.\n\nRelevant Context or Implications:\nThe GDPR's data retention clauses are designed to protect the rights and freedoms of data subjects. They place the responsibility on data controllers to ensure that personal data is not kept longer than necessary and that appropriate safeguards are in place when data is stored for longer periods for specific purposes. Non-compliance with these regulations can result in significant penalties.\n\nIncomplete Information:\nThe search results do not provide specific timeframes for data retention, as these would likely vary depending on the purpose of data processing. For more detailed information, it would be helpful to review the specific data retention policies of the organization or conduct a more targeted search for GDPR guidelines on data retention periods for specific types of data or processing activities.",
+        "answer_length": 2733,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.5075276419520378,
+        "result_diversity": null,
+        "sources": {
+          "standards": 8
+        }
+      }
+    ],
+    "graph": [
+      {
+        "query": "What are the privacy policies?",
+        "method": "graph",
+        "execution_time_ms": 0.14516300143441185,
+        "num_results": 0,
+        "top_k": 10,
+        "contextualization_time_ms": 0.00018900027498602867,
+        "contextualized_answer": null,
+        "answer_length": null,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {}
+      },
+      {
+        "query": "Find GDPR articles about data minimization",
+        "method": "graph",
+        "execution_time_ms": 0.06389099871739745,
+        "num_results": 0,
+        "top_k": 10,
+        "contextualization_time_ms": 0.000400003045797348,
+        "contextualized_answer": null,
+        "answer_length": null,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {}
+      },
+      {
+        "query": "What clauses address GDPR Article 5?",
+        "method": "graph",
+        "execution_time_ms": 6133.198797004297,
+        "num_results": 10,
+        "top_k": 10,
+        "contextualization_time_ms": 4420.277380006155,
+        "contextualized_answer": "I'm sorry, but the search results provided do not contain any information related to GDPR Article 5 or any clauses that address it. The results primarily discuss incidents involving AI-generated deepfakes and AI tools used in legal rulings. \n\nTo find the information you're looking for, I recommend searching specifically within company policies or regulatory standards that pertain to data protection and privacy, particularly those that reference GDPR. You may also want to search for incidents where GDPR Article 5 was relevant to understand how it has been applied in practice.",
+        "answer_length": 581,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {
+          "graph_traversal": 10
+        }
+      },
+      {
+        "query": "Find incidents related to data breaches",
+        "method": "graph",
+        "execution_time_ms": 8475.80699500395,
+        "num_results": 10,
+        "top_k": 10,
+        "contextualization_time_ms": 7806.447686001775,
+        "contextualized_answer": "Summary: The search results do not provide any incidents related to data breaches. All the incidents listed are related to bias in various AI systems, not data security or privacy breaches.\n\nDetailed Explanation: Each of the incidents found in the search results pertains to allegations of bias in AI systems. For instance, Source 1 discusses a case where ChatGPT allegedly allowed a suicide letter without crisis intervention. Source 2 reports on the Sora Video Generator creating biased human representations across race, gender, and disability. Similarly, the remaining sources also detail incidents of bias, but none of them involve data breaches.\n\nRelevant Context: It's important to note that data breaches and bias are distinct issues in the realm of AI ethics and compliance. Data breaches pertain to unauthorized access and potential misuse of sensitive information, while bias refers to unfair and unbalanced representation in the output or decision-making of AI systems.\n\nMissing Information: To find incidents related to data breaches, a different search would be required, specifically targeting incidents involving unauthorized access, data leakage, or privacy violations. \n\nSuggested Next Steps: It would be beneficial to conduct a new search with terms such as \"data breach\", \"unauthorized access\", \"data leakage\", or \"privacy violation\" to find relevant incidents.",
+        "answer_length": 1381,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {
+          "graph_traversal": 10
+        }
+      },
+      {
+        "query": "What are the compliance gaps?",
+        "method": "graph",
+        "execution_time_ms": 13443.09027899726,
+        "num_results": 10,
+        "top_k": 10,
+        "contextualization_time_ms": 12986.161851003999,
+        "contextualized_answer": "The compliance gaps in your organization appear to be related to various aspects of personal data protection and processing, as per the regulations. These gaps include:\n\n1. Subject-matter and objectives: Your company documents do not cover rules relating to the protection of natural persons with regard to the processing of personal data and rules relating to the free movement of personal data (Source 1).\n\n2. Processing of personal data relating to criminal convictions and offences: This aspect is not covered in your company documents (Source 2).\n\n3. Processing which does not require identification: Your company documents do not cover the scenarios where data processing does not require identification of a data subject (Source 3).\n\n4. Transparent information, communication, and modalities for the exercise of the rights of the data subject: Your company documents do not cover the requirement for transparent, intelligible, and easily accessible information related to data processing (Source 4).\n\n5. Information to be provided where personal data are collected from the data subject: Your company documents do not cover the information that needs to be provided to the data subject when their personal data is collected (Source 5).\n\n6. Information to be provided where personal data have not been obtained from the data subject: Your company documents do not cover the information that needs to be provided to the data subject when their personal data is not obtained directly from them (Source 6).\n\n7. Right to rectification: Your company documents do not cover the data subject's right to rectification of inaccurate personal data (Source 7).\n\n8. Communication to each recipient to whom the personal data have been disclosed: Your company documents do not cover the requirement to inform each recipient to whom the personal data has been disclosed (Source 8).\n\nThese gaps indicate a lack of comprehensive policies and procedures related to data protection and processing in your organization. Addressing these gaps will help ensure compliance with data protection regulations and safeguard your organization against potential legal and reputational risks.",
+        "answer_length": 2168,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {
+          "graph_traversal": 10
+        }
+      },
+      {
+        "query": "Show me information about user consent",
+        "method": "graph",
+        "execution_time_ms": 0.01119299849960953,
+        "num_results": 0,
+        "top_k": 10,
+        "contextualization_time_ms": 0.00015800469554960728,
+        "contextualized_answer": null,
+        "answer_length": null,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {}
+      },
+      {
+        "query": "What are the data processing requirements?",
+        "method": "graph",
+        "execution_time_ms": 0.02274600410601124,
+        "num_results": 0,
+        "top_k": 10,
+        "contextualization_time_ms": 0.00014800025383010507,
+        "contextualized_answer": null,
+        "answer_length": null,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {}
+      },
+      {
+        "query": "Find clauses about data retention",
+        "method": "graph",
+        "execution_time_ms": 0.012897005944978446,
+        "num_results": 0,
+        "top_k": 10,
+        "contextualization_time_ms": 0.00020999868866056204,
+        "contextualized_answer": null,
+        "answer_length": null,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {}
+      }
+    ],
+    "hybrid": [
+      {
+        "query": "What are the privacy policies?",
+        "method": "hybrid",
+        "execution_time_ms": 17803.67402000411,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 7121.469608001644,
+        "contextualized_answer": "Meta's privacy policy covers the collection, use, sharing, retention, and transfer of information. The policy is designed to help users understand what information Meta collects and how it is used and shared. The policy also provides information on how users can manage their data and control their privacy settings (Source 1, Source 2).\n\nMeta collects various types of information, including device signals, information shared through device settings, location-related information, network information, and information from cookies and similar technologies. This data is used to identify users and personalize their experiences and ads (Source 3).\n\nUsers have the ability to manage their data, including porting, downloading, or deleting their information. Meta retains user information as long as it is needed to provide its products, comply with legal obligations, or protect its or other's interests (Source 4).\n\nMeta may transfer user information to other countries and may access, preserve, use, and share user information in response to legal requests, to comply with applicable law, or to prevent harm. In some cases, Meta may keep information for an extended period of time (Source 5, Source 6).\n\nMeta's privacy policy is subject to changes, and users will be notified before any material changes are made to the policy (Source 6). The policy also covers how Meta's different products work together to provide a consistent and seamless user experience (Source 7).\n\nMeta may also share information with integrated partners, vendors, service providers, external researchers, AI integrations, and other third parties. In some cases, if part or all of Meta's business is sold or transferred, the new owner may receive user information as part of the transaction, as permitted by law (Source 8).",
+        "answer_length": 1799,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.5345044434070587,
+        "result_diversity": null,
+        "sources": {
+          "faiss_vector": 8
+        }
+      },
+      {
+        "query": "Find GDPR articles about data minimization",
+        "method": "hybrid",
+        "execution_time_ms": 0.03269699664087966,
+        "num_results": 0,
+        "top_k": 10,
+        "contextualization_time_ms": null,
+        "contextualized_answer": null,
+        "answer_length": null,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {}
+      },
+      {
+        "query": "What clauses address GDPR Article 5?",
+        "method": "hybrid",
+        "execution_time_ms": 6609.273181995377,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 2643.709272798151,
+        "contextualized_answer": "I'm sorry, but none of the provided search results contain information related to GDPR Article 5 or any clauses that address it. The results mostly pertain to AI-generated deepfakes and their misuse in various contexts, which is unrelated to your query about GDPR Article 5.\n\nGDPR Article 5 pertains to the principles relating to the processing of personal data. To find the clauses that address this article, you may want to search within company policies that deal with data protection and privacy, or regulatory standards that align with GDPR.\n\nFor a more accurate response, I recommend conducting a new search with terms related to GDPR, data protection, and privacy policies.",
+        "answer_length": 680,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {
+          "graph_traversal": 8
+        }
+      },
+      {
+        "query": "Find incidents related to data breaches",
+        "method": "hybrid",
+        "execution_time_ms": 15759.387465994223,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 6303.754986397689,
+        "contextualized_answer": "Summary: The search results provided do not contain any incidents related to data breaches. All the incidents listed are related to bias in AI systems, not data breaches.\n\nDetailed Explanation: The incidents listed in the search results are all related to bias in AI systems. For instance, Source 1 discusses an incident where a transgender user alleges that ChatGPT allowed a suicide letter without crisis intervention. Source 2 refers to an incident where the Sora Video Generator has reportedly been creating biased human representations across race, gender, and disability. None of these incidents involve a data breach.\n\nContext and Implications: A data breach refers to an incident where unauthorized individuals gain access to confidential data, often with malicious intent. These incidents can have serious implications for both individuals and organizations, including financial loss, damage to reputation, and potential legal consequences. The lack of data breach incidents in the search results could suggest that the database does not contain this type of information, or that the search criteria need to be adjusted.\n\nMissing Information: To find incidents related to data breaches, it may be necessary to perform a more targeted search. This could involve using specific keywords related to data breaches, or searching within a specific timeframe or set of organizations.\n\nSuggested Next Steps: I recommend performing a new search with more specific criteria related to data breaches. This could include terms like \"unauthorized access\", \"data leak\", \"cybersecurity incident\", or \"hacking\". If the database includes different categories of incidents, it may also be helpful to search specifically within categories related to data security or privacy.",
+        "answer_length": 1765,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {
+          "graph_traversal": 8
+        }
+      },
+      {
+        "query": "What are the compliance gaps?",
+        "method": "hybrid",
+        "execution_time_ms": 21106.31551699771,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 8442.526206799084,
+        "contextualized_answer": "The compliance gaps in your organization appear to be related to various aspects of personal data protection and processing, as per the regulations. These gaps, as indicated by the search results, include:\n\n1. Subject-matter and objectives: Your company documents do not cover rules relating to the protection of natural persons regarding the processing of personal data and rules relating to the free movement of personal data (Source 1).\n\n2. Processing of personal data relating to criminal convictions and offences: This aspect is not covered in your company documents (Source 2).\n\n3. Processing which does not require identification: Your company does not have provisions for scenarios where personal data processing does not require the identification of a data subject (Source 3).\n\n4. Transparent information, communication, and modalities for the exercise of the rights of the data subject: Your company lacks clear guidelines on how to provide information related to data processing to the data subject in a concise, transparent, intelligible, and easily accessible form (Source 4).\n\n5. Information to be provided where personal data are collected from the data subject: Your company documents do not specify the information to be provided to the data subject when their personal data is collected (Source 5).\n\n6. Information to be provided where personal data have not been obtained from the data subject: Your company does not have guidelines on what information to provide when personal data has not been obtained directly from the data subject (Source 6).\n\n7. Right to rectification: Your company documents do not cover the data subject's right to rectification of inaccurate personal data (Source 7).\n\n8. Information to each recipient to whom the personal data have been disclosed: Your company lacks guidelines on informing each recipient to whom the personal data have been disclosed (Source 8).\n\nThese gaps indicate a need for your company to review and update its policies to ensure compliance with data protection regulations. It may be beneficial to consult with a data protection officer or legal expert to ensure all necessary areas are covered.",
+        "answer_length": 2166,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {
+          "graph_traversal": 8
+        }
+      },
+      {
+        "query": "Show me information about user consent",
+        "method": "hybrid",
+        "execution_time_ms": 27407.659289994626,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 10963.06371599785,
+        "contextualized_answer": "User consent, in the context of data privacy and compliance, refers to an informed and unambiguous indication of the data subject's agreement to the processing of personal data relating to him or her. This can be expressed through a written statement, including by electronic means, or an oral statement. Examples include ticking a box when visiting a website or choosing technical settings for information society services (Source 1 - GDPR).\n\nConsent must be freely given, informed, and specific. It should not be regarded as freely given if the data subject has no genuine or free choice or is unable to refuse or withdraw consent without detriment. The data subject should be aware of the identity of the controller and the purposes of the processing for which the personal data are intended (Source 2 - GDPR).\n\nThe data subject has the right to withdraw his or her consent at any time, and it should be as easy to withdraw as to give consent. The lawfulness of processing based on consent before its withdrawal is not affected by the withdrawal (Source 3 - GDPR).\n\nWhen processing is based on consent, the controller must be able to demonstrate that the data subject has consented to the processing of his or her personal data. If the consent is given in the context of a written declaration which also concerns other matters, the request for consent must be presented in a manner which is clearly distinguishable from the other matters, in an intelligible and easily accessible form, using clear and plain language (Source 4 - GDPR).\n\nIn the case of children, the consent of the holder of parental responsibility may be necessary depending on the circumstances. Any processing of personal data should be lawful, fair, and transparent. The principle of transparency requires that any information and communication relating to the processing of personal data be easily accessible and easy to understand, and that clear and plain language be used (Source 5 - GDPR).\n\nIn specific cases where there is a clear imbalance between the data subject and the controller, consent is presumed not to be freely given. This could be the case if the performance of a contract, including the provision of a service, is dependent on the consent despite such consent not being necessary for such performance (Source 6 - GDPR).\n\nIn the context of Meta's Privacy Policy, user consent is implied for the collection of various types of data, including device signals, location-related information, information from cookies and similar technologies, and information from partners, vendors, and third parties (Source 7 - Meta Privacy Policy). This includes metadata about content and messages, types of content you view or interact with, and how you interact with it, among other things (Source 8 - Meta Privacy Policy).",
+        "answer_length": 2800,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.4126437157392502,
+        "result_diversity": null,
+        "sources": {
+          "faiss_vector": 8
+        }
+      },
+      {
+        "query": "What are the data processing requirements?",
+        "method": "hybrid",
+        "execution_time_ms": 31289.65273799986,
+        "num_results": 8,
+        "top_k": 10,
+        "contextualization_time_ms": 12515.861095199944,
+        "contextualized_answer": "Data processing requirements, as per the General Data Protection Regulation (GDPR), encompass a broad range of activities and responsibilities. \n\n1. **Data Processing Activities**: Data processing includes operations such as collection, recording, organization, storage, adaptation or alteration, retrieval, consultation, use, disclosure by transmission, dissemination or otherwise making available, alignment or combination, restriction, erasure or destruction of personal data (Source 1 - GDPR).\n\n2. **Data Minimization and Accuracy**: Personal data should be adequate, relevant and limited to what is necessary for the purposes for which they are processed. The data should be accurate and rectified or deleted if inaccurate. The period for which the personal data are stored should be limited to a strict minimum (Source 2 - GDPR).\n\n3. **Security and Confidentiality**: Personal data should be processed in a manner that ensures appropriate security and confidentiality, including for preventing unauthorized access or use. The controller or processor should evaluate the risks inherent in the processing and implement measures to mitigate those risks, such as encryption (Source 3 - GDPR).\n\n4. **Record Keeping**: To demonstrate compliance with GDPR, the controller or processor should maintain records of processing activities under its responsibility and make those records available to the supervisory authority on request (Source 3 - GDPR).\n\n5. **Data Subject Rights**: The data subject has the right to know and obtain communication regarding the purposes for which the personal data are processed, the period for which the personal data are processed, the recipients of the personal data, the logic involved in any automatic personal data processing and, at least when based on profiling, the consequences of such processing (Source 5 - GDPR).\n\n6. **Legal Basis for Processing**: Processing is necessary for the performance of a contract, compliance with a legal obligation, protection of vital interests, performance of a task carried out in the public interest, or for the purposes of legitimate interests pursued by the controller or a third party, unless such interests are overridden by the interests or fundamental rights and freedoms of the data subject (Source 6 - GDPR).\n\n7. **Data Protection by Design and by Default**: Compliance with the general principles relating to personal data processing, the principles of data protection by design and by default are required (Source 7 - GDPR).\n\n8. **Data Subject's Rights**: The data subject has the right to withdraw consent at any time, lodge a complaint with a supervisory authority, and be informed about the existence of automated decision-making, including profiling (Source 8 - GDPR).\n\nThese requirements are designed to ensure that personal data are processed in a way that respects individual privacy rights and ensures data security. Non-compliance can lead to significant penalties under GDPR.",
+        "answer_length": 2969,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": 0.5642569810152054,
+        "result_diversity": null,
+        "sources": {
+          "faiss_vector": 8
+        }
+      },
+      {
+        "query": "Find clauses about data retention",
+        "method": "hybrid",
+        "execution_time_ms": 0.023848006094340235,
+        "num_results": 0,
+        "top_k": 10,
+        "contextualization_time_ms": null,
+        "contextualized_answer": null,
+        "answer_length": null,
+        "precision_at_k": null,
+        "recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "avg_similarity": null,
+        "result_diversity": null,
+        "sources": {}
+      }
+    ]
+  },
+  "summary": {
+    "vector": {
+      "avg_execution_time_ms": 32379.271653122487,
+      "median_execution_time_ms": 33253.67137449575,
+      "min_execution_time_ms": 18786.96656000102,
+      "max_execution_time_ms": 41018.567435996374,
+      "std_execution_time_ms": 6560.144038490179,
+      "avg_num_results": 8,
+      "avg_similarity": 0.4920913032256067,
+      "avg_contextualization_time_ms": 12951.708661248995,
+      "avg_answer_length": 1931.5,
+      "total_queries": 8
+    },
+    "graph": {
+      "avg_execution_time_ms": 3506.5439951267763,
+      "median_execution_time_ms": 0.10452700007590465,
+      "min_execution_time_ms": 0.01119299849960953,
+      "max_execution_time_ms": 13443.09027899726,
+      "std_execution_time_ms": 5234.573275789804,
+      "avg_num_results": 3.75,
+      "avg_similarity": null,
+      "avg_contextualization_time_ms": 3151.611002752361,
+      "avg_answer_length": 1376.6666666666667,
+      "total_queries": 8
+    },
+    "hybrid": {
+      "avg_execution_time_ms": 14997.00234474858,
+      "median_execution_time_ms": 16781.530742999166,
+      "min_execution_time_ms": 0.023848006094340235,
+      "max_execution_time_ms": 31289.65273799986,
+      "std_execution_time_ms": 11864.892210736321,
+      "avg_num_results": 6,
+      "avg_similarity": 0.5038017133871714,
+      "avg_contextualization_time_ms": 7998.397480865727,
+      "avg_answer_length": 2029.8333333333333,
+      "total_queries": 8
+    }
+  },
+  "test_queries": [
+    "What are the privacy policies?",
+    "Find GDPR articles about data minimization",
+    "What clauses address GDPR Article 5?",
+    "Find incidents related to data breaches",
+    "What are the compliance gaps?",
+    "Show me information about user consent",
+    "What are the data processing requirements?",
+    "Find clauses about data retention"
+  ],
+  "top_k": 10
+}
