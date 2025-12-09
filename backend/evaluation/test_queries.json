@@ -1,32 +1,10 @@
 {
   "queries": [
-    "What are the privacy policies?",
-    "Find GDPR articles about data minimization",
-    "What clauses address GDPR Article 5?",
-    "Find incidents related to data breaches",
-    "What are the compliance gaps?",
-    "Show me information about user consent",
-    "What are the data processing requirements?",
-    "Find clauses about data retention",
-    "Which articles are not covered by company documents?",
-    "What privacy policies address data minimization requirements?"
+    "What privacy policies address GDPR Article 5 requirements?",
+    "Find GDPR articles about data minimization and related clauses",
+    "What clauses address GDPR Article 25 and related incidents?",
+    "Find incidents related to data breaches that violate GDPR articles",
+    "What are the compliance gaps between GDPR articles and company policies?"
   ],
-  "description": "Test queries for evaluating vector vs graph search",
-  "categories": {
-    "semantic": [
-      "What are the privacy policies?",
-      "Show me information about user consent",
-      "What are the data processing requirements?"
-    ],
-    "graph": [
-      "What clauses address GDPR Article 5?",
-      "Which articles are not covered by company documents?",
-      "What are the compliance gaps?"
-    ],
-    "hybrid": [
-      "What privacy policies address data minimization requirements?",
-      "Find incidents related to data breaches"
-    ]
-  }
+  "description": "10 queries designed to work with all three search methods (Vector, Graph, Hybrid)"
 }
-
