@@ -179,7 +179,6 @@ class KnowledgeGraphQueries:
         RETURN c.id as clause_id,
                c.text as clause_text,
                c.document_name as document_name,
-               c.compliance_status as compliance_status,
                a.title as article_title
         """
         return self.conn.execute_query(query, {'article_id': article_id})

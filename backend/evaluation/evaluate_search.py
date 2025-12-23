@@ -1,6 +1,48 @@
 """
 Evaluation Framework for Vector vs Graph Search
 Measures timing, accuracy, and other metrics for comparison.
+
+VALIDATION METHODOLOGY:
+=====================
+
+1. LLM-Based Accuracy Evaluation (Primary Method)
+   - Uses a judge LLM model (JUDGE_LLM_MODEL from .env) to evaluate results
+   - For Generated Answers:
+     * Evaluates: Relevance (40%), Accuracy (30%), Completeness (20%), Clarity (10%)
+     * Judge receives: query + top 5 results + generated answer
+     * Returns: Score 0.0-1.0 with reasoning
+   
+   - For Raw Search Results:
+     * Evaluates: Relevance (40%), Coverage (30%), Quality (20%), Diversity (10%)
+     * Judge receives: query + top 8 results with similarity scores
+     * Returns: Score 0.0-1.0 with reasoning
+   
+   - Configuration:
+     * Temperature: 0.1 (for consistency)
+     * Scores clamped to [0, 1] range
+     * JSON response parsed with regex fallback
+
+2. Traditional IR Metrics (Optional, requires ground truth)
+   - Precision@k: Fraction of top-k results that are relevant
+   - Recall@k: Fraction of relevant items retrieved
+   - MRR: Mean Reciprocal Rank (position of first relevant result)
+   - NDCG@k: Normalized Discounted Cumulative Gain
+
+3. Performance Metrics
+   - Execution time (ms): Total query time
+   - Answer generation time (ms): LLM generation time
+   - Result count: Number of results retrieved
+   - Average similarity: Mean similarity score (vector search)
+
+4. Quality Indicators
+   - Source distribution: Breakdown by database/source
+   - Answer length: Characters in generated answer
+   - Result diversity: How diverse are the results
+
+The evaluation framework compares three search methods:
+- Vector: Semantic similarity search using embeddings
+- Graph: Knowledge graph traversal using Neo4j
+- Hybrid: Combination of vector + graph with RRF fusion
 """
 
 import time
@@ -26,9 +68,10 @@ from neo4j_connection import Neo4jConnection
 from dotenv import load_dotenv
 
 load_dotenv()
+# Both models read from .env file
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4")
-# Judge LLM for evaluation - defaults to LLM_MODEL if not specified
-# Can use a different model optimized for evaluation (e.g., "gpt-4-turbo", "gpt-4o")
+# Judge LLM for evaluation - reads from .env, falls back to LLM_MODEL if not set
+# Set JUDGE_LLM_MODEL in .env to use a different model for evaluation
 JUDGE_LLM_MODEL = os.getenv("JUDGE_LLM_MODEL", os.getenv("LLM_MODEL", "gpt-4"))
 
 
@@ -40,11 +83,11 @@ class SearchMetrics:
     execution_time_ms: float
     num_results: int
     top_k: int
-    # Contextualization metrics
-    contextualization_time_ms: Optional[float] = None
-    contextualized_answer: Optional[str] = None
+    # Answer generation metrics
+    answer_generation_time_ms: Optional[float] = None
+    generated_answer: Optional[str] = None
     answer_length: Optional[int] = None
-    has_contextualization: bool = False  # Whether contextualization was used
+    has_answer_generation: bool = False  # Whether answer generation was used
     # Accuracy metrics
     accuracy_score: Optional[float] = None  # LLM-based accuracy score (0-1)
     accuracy_reasoning: Optional[str] = None  # Explanation of accuracy score
@@ -93,9 +136,25 @@ class SearchEvaluator:
         """
         Evaluate answer accuracy using LLM-based evaluation.
         
+        VALIDATION METHODOLOGY:
+        Uses an LLM judge model (JUDGE_LLM_MODEL) to evaluate generated answers.
+        The judge evaluates on 4 dimensions with weighted scoring:
+        1. Relevance (0.0-0.4): Does the answer address the query?
+        2. Accuracy (0.0-0.3): Is information factually correct based on context?
+        3. Completeness (0.0-0.2): Does it cover key points from context?
+        4. Clarity (0.0-0.1): Is it well-structured and understandable?
+        
+        The judge receives:
+        - The original query
+        - Top 5 search results (truncated to 500 chars each)
+        - The generated answer
+        
+        Scoring: Returns a score 0.0-1.0 with reasoning. Uses temperature=0.1
+        for consistency. Scores are clamped to [0, 1] range.
+        
         Args:
             query: Original query
-            answer: Generated answer (None if no contextualization)
+            answer: Generated answer (None if no answer generation)
             results: Search results used to generate answer
             
         Returns:
@@ -180,8 +239,24 @@ Score should be between 0.0 and 1.0."""
         results: List[Dict[str, Any]]
     ) -> Tuple[Optional[float], Optional[str]]:
         """
-        Evaluate search results accuracy/relevance when no contextualized answer is available.
+        Evaluate search results accuracy/relevance when no generated answer is available.
         This evaluates how well the retrieved results answer the query.
+        
+        VALIDATION METHODOLOGY:
+        Uses an LLM judge model (JUDGE_LLM_MODEL) to evaluate raw search results.
+        The judge evaluates on 4 dimensions with weighted scoring:
+        1. Relevance (0.0-0.4): How relevant are results to the query?
+        2. Coverage (0.0-0.3): Do results cover key aspects of the query?
+        3. Quality (0.0-0.2): Are results informative and useful?
+        4. Diversity (0.0-0.1): Do results provide diverse perspectives?
+        
+        The judge receives:
+        - The original query
+        - Top 8 search results with similarity scores and sources
+        - Each result truncated to 400 chars for context
+        
+        Scoring: Returns a score 0.0-1.0 with reasoning. Uses temperature=0.1
+        for consistency. Scores are clamped to [0, 1] range.
         
         Args:
             query: Original query
@@ -270,17 +345,15 @@ Score should be between 0.0 and 1.0."""
         query: str, 
         top_k: int = 10,
         db_names: Optional[List[str]] = None,
-        contextualize: bool = True,
         evaluate_accuracy: bool = True
     ) -> SearchMetrics:
         """
-        Evaluate vector search performance with optional contextualization.
+        Evaluate vector search performance with answer generation.
         
         Args:
             query: Search query
             top_k: Number of results to retrieve
             db_names: Databases to search (None = all)
-            contextualize: Whether to use contextualization
             evaluate_accuracy: Whether to evaluate answer accuracy
             
         Returns:
@@ -288,15 +361,14 @@ Score should be between 0.0 and 1.0."""
         """
         start_time = time.perf_counter()
         
-        # Use full query pipeline with optional contextualization
+        # Use full query pipeline with answer generation (mandatory)
         result = self.vector_engine.query(
             query=query,
             db_names=db_names,
             top_k=top_k,
             rerank=True,
-            contextualize=contextualize,
-            similarity_threshold=0.0,
-            use_expansion=True
+            generate_answer=True,  # Always enabled
+            similarity_threshold=0.0
         )
         
         execution_time_ms = (time.perf_counter() - start_time) * 1000
@@ -304,23 +376,17 @@ Score should be between 0.0 and 1.0."""
         results = result.get('results', [])
         answer = result.get('answer', '')
         
-        # Measure contextualization time separately
-        contextualization_time_ms = None
-        if contextualize and answer:
-            # For vector search, we can't easily separate contextualization time
-            # Estimate it (typically 40-60% of total time for contextualized queries)
-            contextualization_time_ms = execution_time_ms * 0.5  # Rough estimate
+        # Measure answer generation time separately
+        # For vector search, we can't easily separate answer generation time
+        # Estimate it (typically 40-60% of total time)
+        answer_generation_time_ms = execution_time_ms * 0.5 if answer else None
         
         # Evaluate accuracy if requested
         accuracy_score = None
         accuracy_reasoning = None
-        if evaluate_accuracy:
-            if contextualize and answer:
-                # Evaluate contextualized answer accuracy
-                accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
-            else:
-                # Evaluate search results accuracy (without contextualization)
-                accuracy_score, accuracy_reasoning = self.evaluate_results_accuracy(query, results)
+        if evaluate_accuracy and answer:
+            # Evaluate generated answer accuracy
+            accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
         
         # Calculate metrics
         avg_similarity = None
@@ -339,10 +405,10 @@ Score should be between 0.0 and 1.0."""
             execution_time_ms=execution_time_ms,
             num_results=len(results),
             top_k=top_k,
-            contextualization_time_ms=contextualization_time_ms,
-            contextualized_answer=answer,
+            answer_generation_time_ms=answer_generation_time_ms,
+            generated_answer=answer,
             answer_length=len(answer) if answer else None,
-            has_contextualization=contextualize,
+            has_answer_generation=True,  # Always enabled
             accuracy_score=accuracy_score,
             accuracy_reasoning=accuracy_reasoning,
             avg_similarity=avg_similarity,
@@ -353,16 +419,14 @@ Score should be between 0.0 and 1.0."""
         self,
         query: str,
         top_k: int = 10,
-        contextualize: bool = True,
         evaluate_accuracy: bool = True
     ) -> SearchMetrics:
         """
-        Evaluate graph traversal search performance with optional contextualization.
+        Evaluate graph traversal search performance with answer generation.
         
         Args:
             query: Search query
             top_k: Number of results to retrieve
-            contextualize: Whether to use contextualization
             evaluate_accuracy: Whether to evaluate answer accuracy
             
         Returns:
@@ -376,29 +440,25 @@ Score should be between 0.0 and 1.0."""
         # Limit to top_k
         results = results[:top_k]
         
-        # Measure contextualization time separately
-        contextualize_start = time.perf_counter()
+        # Measure answer generation time separately (mandatory)
+        answer_gen_start = time.perf_counter()
         answer = None
-        if contextualize and results:
+        if results:
             try:
-                answer = self.vector_engine.contextualize_results(query, results[:8])
+                answer = self.vector_engine.generate_answer(query, results[:8])
             except Exception as e:
-                print(f"Warning: Contextualization failed: {e}")
+                print(f"Warning: Answer generation failed: {e}")
                 answer = None
         
-        contextualization_time_ms = (time.perf_counter() - contextualize_start) * 1000 if contextualize else None
+        answer_generation_time_ms = (time.perf_counter() - answer_gen_start) * 1000 if answer else None
         execution_time_ms = (time.perf_counter() - start_time) * 1000
         
         # Evaluate accuracy if requested
         accuracy_score = None
         accuracy_reasoning = None
-        if evaluate_accuracy:
-            if contextualize and answer:
-                # Evaluate contextualized answer accuracy
-                accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
-            else:
-                # Evaluate search results accuracy (without contextualization)
-                accuracy_score, accuracy_reasoning = self.evaluate_results_accuracy(query, results)
+        if evaluate_accuracy and answer:
+            # Evaluate generated answer accuracy
+            accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
         
         # Source distribution
         sources = defaultdict(int)
@@ -412,10 +472,10 @@ Score should be between 0.0 and 1.0."""
             execution_time_ms=execution_time_ms,
             num_results=len(results),
             top_k=top_k,
-            contextualization_time_ms=contextualization_time_ms,
-            contextualized_answer=answer,
+            answer_generation_time_ms=answer_generation_time_ms,
+            generated_answer=answer,
             answer_length=len(answer) if answer else None,
-            has_contextualization=contextualize,
+            has_answer_generation=True,  # Always enabled
             accuracy_score=accuracy_score,
             accuracy_reasoning=accuracy_reasoning,
             sources=dict(sources)
@@ -427,18 +487,16 @@ Score should be between 0.0 and 1.0."""
         top_k: int = 10,
         use_faiss: bool = True,
         use_graph_traversal: bool = True,
-        contextualize: bool = True,
         evaluate_accuracy: bool = True
     ) -> SearchMetrics:
         """
-        Evaluate hybrid search performance with optional contextualization.
+        Evaluate hybrid search performance with answer generation.
         
         Args:
             query: Search query
             top_k: Number of results to retrieve
             use_faiss: Use FAISS vector search
             use_graph_traversal: Use graph traversal
-            contextualize: Whether to use contextualization
             evaluate_accuracy: Whether to evaluate answer accuracy
             
         Returns:
@@ -446,12 +504,12 @@ Score should be between 0.0 and 1.0."""
         """
         start_time = time.perf_counter()
         
-        # Use full hybrid query pipeline with optional contextualization
+        # Use full hybrid query pipeline with answer generation (mandatory)
         result = self.hybrid_engine.hybrid_query(
             query=query,
             top_k=top_k,
             rerank=True,
-            contextualize=contextualize,
+            generate_answer=True,  # Always enabled
             rrf_k=None  # Use default from .env
         )
         
@@ -460,22 +518,16 @@ Score should be between 0.0 and 1.0."""
         results = result.get('results', [])
         answer = result.get('answer', '')
         
-        # Measure contextualization time separately (approximate)
-        contextualization_time_ms = None
-        if contextualize and answer:
-            # Estimate contextualization time (typically 40-60% of total time)
-            contextualization_time_ms = execution_time_ms * 0.5  # Rough estimate
+        # Measure answer generation time separately (approximate)
+        # Estimate answer generation time (typically 40-60% of total time)
+        answer_generation_time_ms = execution_time_ms * 0.5 if answer else None
         
         # Evaluate accuracy if requested
         accuracy_score = None
         accuracy_reasoning = None
-        if evaluate_accuracy:
-            if contextualize and answer:
-                # Evaluate contextualized answer accuracy
-                accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
-            else:
-                # Evaluate search results accuracy (without contextualization)
-                accuracy_score, accuracy_reasoning = self.evaluate_results_accuracy(query, results)
+        if evaluate_accuracy and answer:
+            # Evaluate generated answer accuracy
+            accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
         
         # Calculate average similarity (for vector results)
         avg_similarity = None
@@ -495,10 +547,10 @@ Score should be between 0.0 and 1.0."""
             execution_time_ms=execution_time_ms,
             num_results=len(results),
             top_k=top_k,
-            contextualization_time_ms=contextualization_time_ms,
-            contextualized_answer=answer,
+            answer_generation_time_ms=answer_generation_time_ms,
+            generated_answer=answer,
             answer_length=len(answer) if answer else None,
-            has_contextualization=contextualize,
+            has_answer_generation=True,  # Always enabled
             accuracy_score=accuracy_score,
             accuracy_reasoning=accuracy_reasoning,
             avg_similarity=avg_similarity,
@@ -612,18 +664,20 @@ Score should be between 0.0 and 1.0."""
         test_queries: List[str],
         top_k: int = 10,
         ground_truth: Optional[Dict[str, List[str]]] = None,
-        compare_contextualization: bool = True,
-        evaluate_accuracy: bool = True
+        evaluate_accuracy: bool = True,
+        verbose: bool = True
     ) -> Dict[str, Any]:
         """
         Run comprehensive evaluation suite.
+        
+        Answer generation is mandatory for all search methods.
         
         Args:
             test_queries: List of test queries
             top_k: Number of results to retrieve
             ground_truth: Optional dict mapping query to list of relevant result IDs
-            compare_contextualization: If True, run both with and without contextualization
             evaluate_accuracy: Whether to evaluate answer accuracy
+            verbose: Whether to show detailed progress
             
         Returns:
             Dictionary with evaluation results
@@ -634,160 +688,89 @@ Score should be between 0.0 and 1.0."""
             'hybrid': []
         }
         
-        # If comparing contextualization, create separate results
-        if compare_contextualization:
-            results_with_ctx = {
-                'vector': [],
-                'graph': [],
-                'hybrid': []
-            }
-            results_without_ctx = {
-                'vector': [],
-                'graph': [],
-                'hybrid': []
-            }
-        
-        print("=" * 80)
-        print("SEARCH EVALUATION SUITE")
-        print("=" * 80)
-        print(f"Test queries: {len(test_queries)}")
-        print(f"Top K: {top_k}")
-        print(f"Compare contextualization: {compare_contextualization}")
-        print(f"Evaluate accuracy: {evaluate_accuracy}")
-        if evaluate_accuracy:
-            print(f"Judge LLM Model: {JUDGE_LLM_MODEL} (for accuracy evaluation)")
-            print(f"Contextualization LLM Model: {LLM_MODEL}")
-        print("=" * 80)
-        print()
-        
-        for i, query in enumerate(test_queries, 1):
-            print(f"[{i}/{len(test_queries)}] Evaluating query: '{query}'")
-            
-            if compare_contextualization:
-                # Run WITH contextualization
-                print("  [WITH Contextualization]")
-                
-                # Vector search with contextualization
-                print("    → Vector search...", end=" ")
-                vector_metrics_ctx = self.evaluate_vector_search(
-                    query, top_k=top_k, contextualize=True, evaluate_accuracy=evaluate_accuracy
-                )
-                results_with_ctx['vector'].append(vector_metrics_ctx)
-                ctx_time = f", ctx: {vector_metrics_ctx.contextualization_time_ms:.0f}ms" if vector_metrics_ctx.contextualization_time_ms else ""
-                acc = f", acc: {vector_metrics_ctx.accuracy_score:.2f}" if vector_metrics_ctx.accuracy_score is not None else ""
-                print(f"✓ ({vector_metrics_ctx.execution_time_ms:.2f}ms{ctx_time}{acc}, {vector_metrics_ctx.num_results} results)")
-                
-                # Graph search with contextualization
-                print("    → Graph search...", end=" ")
-                graph_metrics_ctx = self.evaluate_graph_search(
-                    query, top_k=top_k, contextualize=True, evaluate_accuracy=evaluate_accuracy
-                )
-                results_with_ctx['graph'].append(graph_metrics_ctx)
-                ctx_time = f", ctx: {graph_metrics_ctx.contextualization_time_ms:.0f}ms" if graph_metrics_ctx.contextualization_time_ms else ""
-                acc = f", acc: {graph_metrics_ctx.accuracy_score:.2f}" if graph_metrics_ctx.accuracy_score is not None else ""
-                print(f"✓ ({graph_metrics_ctx.execution_time_ms:.2f}ms{ctx_time}{acc}, {graph_metrics_ctx.num_results} results)")
-                
-                # Hybrid search with contextualization
-                print("    → Hybrid search...", end=" ")
-                hybrid_metrics_ctx = self.evaluate_hybrid_search(
-                    query, top_k=top_k, contextualize=True, evaluate_accuracy=evaluate_accuracy
-                )
-                results_with_ctx['hybrid'].append(hybrid_metrics_ctx)
-                ctx_time = f", ctx: {hybrid_metrics_ctx.contextualization_time_ms:.0f}ms" if hybrid_metrics_ctx.contextualization_time_ms else ""
-                acc = f", acc: {hybrid_metrics_ctx.accuracy_score:.2f}" if hybrid_metrics_ctx.accuracy_score is not None else ""
-                print(f"✓ ({hybrid_metrics_ctx.execution_time_ms:.2f}ms{ctx_time}{acc}, {hybrid_metrics_ctx.num_results} results)")
-                
-                # Run WITHOUT contextualization
-                print("  [WITHOUT Contextualization]")
-                
-                # Vector search without contextualization
-                print("    → Vector search...", end=" ")
-                vector_metrics_no_ctx = self.evaluate_vector_search(
-                    query, top_k=top_k, contextualize=False, evaluate_accuracy=evaluate_accuracy
-                )
-                results_without_ctx['vector'].append(vector_metrics_no_ctx)
-                acc = f", acc: {vector_metrics_no_ctx.accuracy_score:.2f}" if vector_metrics_no_ctx.accuracy_score is not None else ""
-                print(f"✓ ({vector_metrics_no_ctx.execution_time_ms:.2f}ms{acc}, {vector_metrics_no_ctx.num_results} results)")
-                
-                # Graph search without contextualization
-                print("    → Graph search...", end=" ")
-                graph_metrics_no_ctx = self.evaluate_graph_search(
-                    query, top_k=top_k, contextualize=False, evaluate_accuracy=evaluate_accuracy
-                )
-                results_without_ctx['graph'].append(graph_metrics_no_ctx)
-                acc = f", acc: {graph_metrics_no_ctx.accuracy_score:.2f}" if graph_metrics_no_ctx.accuracy_score is not None else ""
-                print(f"✓ ({graph_metrics_no_ctx.execution_time_ms:.2f}ms{acc}, {graph_metrics_no_ctx.num_results} results)")
-                
-                # Hybrid search without contextualization
-                print("    → Hybrid search...", end=" ")
-                hybrid_metrics_no_ctx = self.evaluate_hybrid_search(
-                    query, top_k=top_k, contextualize=False, evaluate_accuracy=evaluate_accuracy
-                )
-                results_without_ctx['hybrid'].append(hybrid_metrics_no_ctx)
-                acc = f", acc: {hybrid_metrics_no_ctx.accuracy_score:.2f}" if hybrid_metrics_no_ctx.accuracy_score is not None else ""
-                print(f"✓ ({hybrid_metrics_no_ctx.execution_time_ms:.2f}ms{acc}, {hybrid_metrics_no_ctx.num_results} results)")
-                
-            else:
-                # Run with contextualization only (default)
-                # Evaluate vector search
-                print("  → Vector search...", end=" ")
-                vector_metrics = self.evaluate_vector_search(
-                    query, top_k=top_k, contextualize=True, evaluate_accuracy=evaluate_accuracy
-                )
-                results['vector'].append(vector_metrics)
-                ctx_time = f", ctx: {vector_metrics.contextualization_time_ms:.0f}ms" if vector_metrics.contextualization_time_ms else ""
-                acc = f", acc: {vector_metrics.accuracy_score:.2f}" if vector_metrics.accuracy_score is not None else ""
-                print(f"✓ ({vector_metrics.execution_time_ms:.2f}ms{ctx_time}{acc}, {vector_metrics.num_results} results)")
-                
-                # Evaluate graph search
-                print("  → Graph search...", end=" ")
-                graph_metrics = self.evaluate_graph_search(
-                    query, top_k=top_k, contextualize=True, evaluate_accuracy=evaluate_accuracy
-                )
-                results['graph'].append(graph_metrics)
-                ctx_time = f", ctx: {graph_metrics.contextualization_time_ms:.0f}ms" if graph_metrics.contextualization_time_ms else ""
-                acc = f", acc: {graph_metrics.accuracy_score:.2f}" if graph_metrics.accuracy_score is not None else ""
-                print(f"✓ ({graph_metrics.execution_time_ms:.2f}ms{ctx_time}{acc}, {graph_metrics.num_results} results)")
-                
-                # Evaluate hybrid search
-                print("  → Hybrid search...", end=" ")
-                hybrid_metrics = self.evaluate_hybrid_search(
-                    query, top_k=top_k, contextualize=True, evaluate_accuracy=evaluate_accuracy
-                )
-                results['hybrid'].append(hybrid_metrics)
-                ctx_time = f", ctx: {hybrid_metrics.contextualization_time_ms:.0f}ms" if hybrid_metrics.contextualization_time_ms else ""
-                acc = f", acc: {hybrid_metrics.accuracy_score:.2f}" if hybrid_metrics.accuracy_score is not None else ""
-                print(f"✓ ({hybrid_metrics.execution_time_ms:.2f}ms{ctx_time}{acc}, {hybrid_metrics.num_results} results)")
-            
+        if verbose:
+            print("=" * 80)
+            print("SEARCH EVALUATION SUITE")
+            print("=" * 80)
+            print(f"Test queries: {len(test_queries)}")
+            print(f"Top K: {top_k}")
+            print(f"Answer Generation: Mandatory for all methods")
+            print(f"Evaluate accuracy: {evaluate_accuracy}")
+            if evaluate_accuracy:
+                print(f"Judge LLM Model: {JUDGE_LLM_MODEL} (for accuracy evaluation)")
+                print(f"Answer Generation LLM Model: {LLM_MODEL}")
+            print("=" * 80)
+            print()
+        else:
+            # Simplified header
+            print(f"Running evaluation: {len(test_queries)} queries × 3 methods (all with answer generation)")
+            if evaluate_accuracy:
+                print(f"Judge: {JUDGE_LLM_MODEL} | Answer Gen: {LLM_MODEL}")
             print()
         
-        # Calculate aggregate statistics
-        if compare_contextualization:
-            summary_with_ctx = self._calculate_summary_statistics(results_with_ctx)
-            summary_without_ctx = self._calculate_summary_statistics(results_without_ctx)
+        for i, query in enumerate(test_queries, 1):
+            if verbose:
+                print(f"[{i}/{len(test_queries)}] Evaluating query: '{query}'")
+            else:
+                # Simplified progress indicator
+                progress = (i - 1) / len(test_queries) * 100
+                print(f"[{i}/{len(test_queries)}] {progress:.0f}% - {query[:60]}{'...' if len(query) > 60 else ''}", end=" ")
             
-            return {
-                'results': {
-                    'with_contextualization': results_with_ctx,
-                    'without_contextualization': results_without_ctx
-                },
-                'summary': {
-                    'with_contextualization': summary_with_ctx,
-                    'without_contextualization': summary_without_ctx
-                },
-                'test_queries': test_queries,
-                'top_k': top_k,
-                'compare_contextualization': True
-            }
-        else:
-            summary = self._calculate_summary_statistics(results)
-            return {
-                'results': results,
-                'summary': summary,
-                'test_queries': test_queries,
-                'top_k': top_k,
-                'compare_contextualization': False
-            }
+            # Evaluate vector search (answer generation mandatory)
+            if verbose:
+                print("  → Vector search...", end=" ")
+            vector_metrics = self.evaluate_vector_search(
+                query, top_k=top_k, evaluate_accuracy=evaluate_accuracy
+            )
+            results['vector'].append(vector_metrics)
+            if verbose:
+                ans_time = f", ans: {vector_metrics.answer_generation_time_ms:.0f}ms" if vector_metrics.answer_generation_time_ms else ""
+                acc = f", acc: {vector_metrics.accuracy_score:.2f}" if vector_metrics.accuracy_score is not None else ""
+                print(f"✓ ({vector_metrics.execution_time_ms:.2f}ms{ans_time}{acc}, {vector_metrics.num_results} results)")
+            
+            # Evaluate graph search (answer generation mandatory)
+            if verbose:
+                print("  → Graph search...", end=" ")
+            graph_metrics = self.evaluate_graph_search(
+                query, top_k=top_k, evaluate_accuracy=evaluate_accuracy
+            )
+            results['graph'].append(graph_metrics)
+            if verbose:
+                ans_time = f", ans: {graph_metrics.answer_generation_time_ms:.0f}ms" if graph_metrics.answer_generation_time_ms else ""
+                acc = f", acc: {graph_metrics.accuracy_score:.2f}" if graph_metrics.accuracy_score is not None else ""
+                print(f"✓ ({graph_metrics.execution_time_ms:.2f}ms{ans_time}{acc}, {graph_metrics.num_results} results)")
+            
+            # Evaluate hybrid search (answer generation mandatory)
+            if verbose:
+                print("  → Hybrid search...", end=" ")
+            hybrid_metrics = self.evaluate_hybrid_search(
+                query, top_k=top_k, evaluate_accuracy=evaluate_accuracy
+            )
+            results['hybrid'].append(hybrid_metrics)
+            if verbose:
+                ans_time = f", ans: {hybrid_metrics.answer_generation_time_ms:.0f}ms" if hybrid_metrics.answer_generation_time_ms else ""
+                acc = f", acc: {hybrid_metrics.accuracy_score:.2f}" if hybrid_metrics.accuracy_score is not None else ""
+                print(f"✓ ({hybrid_metrics.execution_time_ms:.2f}ms{ans_time}{acc}, {hybrid_metrics.num_results} results)")
+            else:
+                # Simplified: show completion with average accuracy
+                avg_acc = (vector_metrics.accuracy_score or 0) + (graph_metrics.accuracy_score or 0) + (hybrid_metrics.accuracy_score or 0)
+                if evaluate_accuracy and avg_acc > 0:
+                    avg_acc = avg_acc / 3
+                    print(f"✓ (avg acc: {avg_acc:.2f})")
+                else:
+                    print("✓")
+            
+            if verbose:
+                print()
+        
+        # Calculate aggregate statistics
+        summary = self._calculate_summary_statistics(results)
+        return {
+            'results': results,
+            'summary': summary,
+            'test_queries': test_queries,
+            'top_k': top_k
+        }
     
     def _calculate_summary_statistics(
         self,
@@ -803,7 +786,7 @@ Score should be between 0.0 and 1.0."""
             execution_times = [m.execution_time_ms for m in metrics_list]
             num_results = [m.num_results for m in metrics_list]
             avg_similarities = [m.avg_similarity for m in metrics_list if m.avg_similarity is not None]
-            contextualization_times = [m.contextualization_time_ms for m in metrics_list if m.contextualization_time_ms is not None]
+            answer_generation_times = [m.answer_generation_time_ms for m in metrics_list if m.answer_generation_time_ms is not None]
             answer_lengths = [m.answer_length for m in metrics_list if m.answer_length is not None]
             accuracy_scores = [m.accuracy_score for m in metrics_list if m.accuracy_score is not None]
             
@@ -815,7 +798,7 @@ Score should be between 0.0 and 1.0."""
                 'std_execution_time_ms': statistics.stdev(execution_times) if len(execution_times) > 1 else 0,
                 'avg_num_results': statistics.mean(num_results),
                 'avg_similarity': statistics.mean(avg_similarities) if avg_similarities else None,
-                'avg_contextualization_time_ms': statistics.mean(contextualization_times) if contextualization_times else None,
+                'avg_answer_generation_time_ms': statistics.mean(answer_generation_times) if answer_generation_times else None,
                 'avg_answer_length': statistics.mean(answer_lengths) if answer_lengths else None,
                 'avg_accuracy_score': statistics.mean(accuracy_scores) if accuracy_scores else None,
                 'total_queries': len(metrics_list)
@@ -825,200 +808,65 @@ Score should be between 0.0 and 1.0."""
     
     def print_evaluation_report(self, evaluation_results: Dict[str, Any]):
         """Print formatted evaluation report."""
-        compare_ctx = evaluation_results.get('compare_contextualization', False)
+        summary = evaluation_results['summary']
         
-        if compare_ctx:
-            summary_with = evaluation_results['summary']['with_contextualization']
-            summary_without = evaluation_results['summary']['without_contextualization']
-            
-            print("\n" + "=" * 100)
-            print("EVALUATION SUMMARY - COMPLETE COMPARISON")
-            print("=" * 100)
-            print()
-            print("All queries tested across 3 search methods × 2 modes (with/without contextualization)")
+        print("\n" + "=" * 80)
+        print("EVALUATION SUMMARY")
+        print("=" * 80)
+        print()
+        print("All queries tested across 3 search methods (all with answer generation)")
+        if any(stats.get('avg_accuracy_score') is not None for stats in summary.values()):
             print(f"Judge LLM Model: {JUDGE_LLM_MODEL} (used for accuracy evaluation)")
-            print(f"Contextualization LLM Model: {LLM_MODEL}")
-            print("=" * 100)
+            print(f"Answer Generation LLM Model: {LLM_MODEL}")
             print()
-            
-            # Create a comprehensive comparison table
-            print("EXECUTION TIME & ACCURACY COMPARISON")
-            print("-" * 100)
-            print(f"{'Method':<12} {'Mode':<25} {'Execution Time (ms)':<30} {'Accuracy Score':<20}")
-            print("-" * 100)
-            
-            for method in ['vector', 'graph', 'hybrid']:
-                if method in summary_with and method in summary_without:
-                    stats_with = summary_with[method]
-                    stats_without = summary_without[method]
-                    
-                    # WITH contextualization
-                    exec_time_with = stats_with['avg_execution_time_ms']
-                    ctx_time = stats_with.get('avg_contextualization_time_ms', 0)
-                    accuracy = stats_with.get('avg_accuracy_score', None)
-                    accuracy_str = f"{accuracy:.3f}" if accuracy is not None else "N/A"
-                    time_str = f"{exec_time_with:.2f}ms (ctx: {ctx_time:.0f}ms)"
-                    
-                    print(f"{method.upper():<12} {'WITH Contextualization':<25} "
-                          f"{time_str:<30} {accuracy_str:>20}")
-                    
-                    # WITHOUT contextualization
-                    exec_time_without = stats_without['avg_execution_time_ms']
-                    accuracy_without = stats_without.get('avg_accuracy_score', None)
-                    accuracy_without_str = f"{accuracy_without:.3f}" if accuracy_without is not None else "N/A"
-                    overhead_ms = exec_time_with - exec_time_without
-                    overhead_pct = (overhead_ms / exec_time_without) * 100 if exec_time_without > 0 else 0
-                    
-                    print(f"{'':<12} {'WITHOUT Contextualization':<25} "
-                          f"{exec_time_without:.2f}ms{'':<22} "
-                          f"{accuracy_without_str:>20}")
-                    print(f"{'':<12} {'Overhead':<25} "
-                          f"{overhead_ms:.2f}ms ({overhead_pct:+.1f}%){'':<15} {'':<20}")
-                    print()
-            
-            # Detailed breakdown
-            print("\n" + "=" * 100)
-            print("DETAILED BREAKDOWN BY METHOD")
-            print("-" * 100)
-            
-            for method in ['vector', 'graph', 'hybrid']:
-                if method in summary_with and method in summary_without:
-                    stats_with = summary_with[method]
-                    stats_without = summary_without[method]
-                    
-                    print(f"\n{method.upper()} SEARCH:")
-                    print(f"  WITH Contextualization:")
-                    print(f"    • Total execution time: {stats_with['avg_execution_time_ms']:.2f}ms")
-                    print(f"    • Contextualization time: {stats_with.get('avg_contextualization_time_ms', 0):.2f}ms")
-                    print(f"    • Search-only time: {stats_with['avg_execution_time_ms'] - stats_with.get('avg_contextualization_time_ms', 0):.2f}ms")
-                    if stats_with.get('avg_accuracy_score') is not None:
-                        print(f"    • Accuracy score: {stats_with['avg_accuracy_score']:.3f} (0.0-1.0)")
-                        print(f"    • Answer length: {stats_with.get('avg_answer_length', 0):.0f} chars")
-                    print(f"    • Average results: {stats_with['avg_num_results']:.1f}")
-                    
-                    print(f"  WITHOUT Contextualization:")
-                    print(f"    • Execution time: {stats_without['avg_execution_time_ms']:.2f}ms")
-                    print(f"    • Average results: {stats_without['avg_num_results']:.1f}")
-                    if stats_without.get('avg_accuracy_score') is not None:
-                        print(f"    • Accuracy score: {stats_without['avg_accuracy_score']:.3f} (0.0-1.0)")
-                        print(f"      (Evaluates search results quality/relevance)")
-                    
-                    # Calculate overhead
-                    overhead_ms = stats_with['avg_execution_time_ms'] - stats_without['avg_execution_time_ms']
-                    overhead_pct = (overhead_ms / stats_without['avg_execution_time_ms']) * 100 if stats_without['avg_execution_time_ms'] > 0 else 0
-                    print(f"  Contextualization Overhead: {overhead_ms:.2f}ms ({overhead_pct:+.1f}%)")
-            
-            # Summary table
-            print("\n" + "=" * 100)
-            print("SUMMARY TABLE - ALL METHODS COMPARISON")
-            print("-" * 100)
-            print(f"{'Method':<12} {'WITH Ctx Time':<18} {'WITHOUT Ctx Time':<20} {'Overhead':<15} {'WITH Acc':<12} {'WITHOUT Acc':<12}")
-            print("-" * 100)
-            for method in ['vector', 'graph', 'hybrid']:
-                if method in summary_with and method in summary_without:
-                    stats_with = summary_with[method]
-                    stats_without = summary_without[method]
-                    overhead_ms = stats_with['avg_execution_time_ms'] - stats_without['avg_execution_time_ms']
-                    accuracy_with = stats_with.get('avg_accuracy_score', None)
-                    accuracy_without = stats_without.get('avg_accuracy_score', None)
-                    accuracy_with_str = f"{accuracy_with:.3f}" if accuracy_with is not None else "N/A"
-                    accuracy_without_str = f"{accuracy_without:.3f}" if accuracy_without is not None else "N/A"
-                    
-                    print(f"{method.upper():<12} "
-                          f"{stats_with['avg_execution_time_ms']:>8.2f}ms{'':<9} "
-                          f"{stats_without['avg_execution_time_ms']:>8.2f}ms{'':<11} "
-                          f"{overhead_ms:>6.0f}ms{'':<8} "
-                          f"{accuracy_with_str:>12} "
-                          f"{accuracy_without_str:>12}")
-            
-            # Speed comparison between methods
-            print("\n" + "=" * 100)
-            print("RELATIVE PERFORMANCE COMPARISON")
-            print("-" * 100)
-            print("WITH Contextualization:")
-            if 'vector' in summary_with and 'graph' in summary_with:
-                vector_avg = summary_with['vector']['avg_execution_time_ms']
-                graph_avg = summary_with['graph']['avg_execution_time_ms']
-                speedup = graph_avg / vector_avg if vector_avg > 0 else 0
-                print(f"  • Vector vs Graph: {speedup:.2f}x {'faster' if speedup > 1 else 'slower'}")
-            
-            if 'hybrid' in summary_with and 'vector' in summary_with:
-                hybrid_avg = summary_with['hybrid']['avg_execution_time_ms']
-                vector_avg = summary_with['vector']['avg_execution_time_ms']
-                overhead = (hybrid_avg / vector_avg - 1) * 100 if vector_avg > 0 else 0
-                print(f"  • Hybrid vs Vector: {overhead:+.1f}% overhead")
-            
-            print("WITHOUT Contextualization:")
-            if 'vector' in summary_without and 'graph' in summary_without:
-                vector_avg = summary_without['vector']['avg_execution_time_ms']
-                graph_avg = summary_without['graph']['avg_execution_time_ms']
-                speedup = graph_avg / vector_avg if vector_avg > 0 else 0
-                print(f"  • Vector vs Graph: {speedup:.2f}x {'faster' if speedup > 1 else 'slower'}")
-            
-            if 'hybrid' in summary_without and 'vector' in summary_without:
-                hybrid_avg = summary_without['hybrid']['avg_execution_time_ms']
-                vector_avg = summary_without['vector']['avg_execution_time_ms']
-                overhead = (hybrid_avg / vector_avg - 1) * 100 if vector_avg > 0 else 0
-                print(f"  • Hybrid vs Vector: {overhead:+.1f}% overhead")
-            
-        else:
-            summary = evaluation_results['summary']
-            
-            print("\n" + "=" * 80)
-            print("EVALUATION SUMMARY")
-            print("=" * 80)
-            print()
-            if any(stats.get('avg_accuracy_score') is not None for stats in summary.values()):
-                print(f"Judge LLM Model: {JUDGE_LLM_MODEL} (used for accuracy evaluation)")
-                print(f"Contextualization LLM Model: {LLM_MODEL}")
-                print()
-            
-            # Performance comparison
-            print("PERFORMANCE METRICS (Timing)")
-            print("-" * 80)
-            for method in ['vector', 'graph', 'hybrid']:
-                if method in summary:
-                    stats = summary[method]
-                    print(f"\n{method.upper()}:")
-                    print(f"  Average time: {stats['avg_execution_time_ms']:.2f}ms")
-                    print(f"  Median time:  {stats['median_execution_time_ms']:.2f}ms")
-                    print(f"  Min time:     {stats['min_execution_time_ms']:.2f}ms")
-                    print(f"  Max time:     {stats['max_execution_time_ms']:.2f}ms")
-                    print(f"  Std dev:      {stats['std_execution_time_ms']:.2f}ms")
-            
-            # Result quality
-            print("\n" + "=" * 80)
-            print("RESULT QUALITY METRICS")
-            print("-" * 80)
-            for method in ['vector', 'graph', 'hybrid']:
-                if method in summary:
-                    stats = summary[method]
-                    print(f"\n{method.upper()}:")
-                    print(f"  Average results: {stats['avg_num_results']:.1f}")
-                    if stats.get('avg_similarity') is not None:
-                        print(f"  Avg similarity:  {stats['avg_similarity']:.4f}")
-                    if stats.get('avg_contextualization_time_ms') is not None:
-                        print(f"  Avg contextualization time: {stats['avg_contextualization_time_ms']:.2f}ms")
-                    if stats.get('avg_answer_length') is not None:
-                        print(f"  Avg answer length: {stats['avg_answer_length']:.0f} chars")
-                    if stats.get('avg_accuracy_score') is not None:
-                        print(f"  Avg accuracy score: {stats['avg_accuracy_score']:.3f}")
-            
-            # Speed comparison
-            print("\n" + "=" * 80)
-            print("SPEED COMPARISON")
-            print("-" * 80)
-            if 'vector' in summary and 'graph' in summary:
-                vector_avg = summary['vector']['avg_execution_time_ms']
-                graph_avg = summary['graph']['avg_execution_time_ms']
-                speedup = graph_avg / vector_avg if vector_avg > 0 else 0
-                print(f"Vector vs Graph: {speedup:.2f}x {'faster' if speedup > 1 else 'slower'}")
-            
-            if 'hybrid' in summary and 'vector' in summary:
-                hybrid_avg = summary['hybrid']['avg_execution_time_ms']
-                vector_avg = summary['vector']['avg_execution_time_ms']
-                overhead = (hybrid_avg / vector_avg - 1) * 100 if vector_avg > 0 else 0
-                print(f"Hybrid overhead vs Vector: {overhead:+.1f}%")
+        
+        # Performance comparison
+        print("PERFORMANCE METRICS (Timing)")
+        print("-" * 80)
+        for method in ['vector', 'graph', 'hybrid']:
+            if method in summary:
+                stats = summary[method]
+                print(f"\n{method.upper()}:")
+                print(f"  Average time: {stats['avg_execution_time_ms']:.2f}ms")
+                print(f"  Median time:  {stats['median_execution_time_ms']:.2f}ms")
+                print(f"  Min time:     {stats['min_execution_time_ms']:.2f}ms")
+                print(f"  Max time:     {stats['max_execution_time_ms']:.2f}ms")
+                print(f"  Std dev:      {stats['std_execution_time_ms']:.2f}ms")
+                if stats.get('avg_answer_generation_time_ms') is not None:
+                    print(f"  Answer generation time: {stats['avg_answer_generation_time_ms']:.2f}ms")
+                    print(f"  Search-only time: {stats['avg_execution_time_ms'] - stats.get('avg_answer_generation_time_ms', 0):.2f}ms")
+        
+        # Result quality
+        print("\n" + "=" * 80)
+        print("RESULT QUALITY METRICS")
+        print("-" * 80)
+        for method in ['vector', 'graph', 'hybrid']:
+            if method in summary:
+                stats = summary[method]
+                print(f"\n{method.upper()}:")
+                print(f"  Average results: {stats['avg_num_results']:.1f}")
+                if stats.get('avg_similarity') is not None:
+                    print(f"  Avg similarity:  {stats['avg_similarity']:.4f}")
+                if stats.get('avg_answer_length') is not None:
+                    print(f"  Avg answer length: {stats['avg_answer_length']:.0f} chars")
+                if stats.get('avg_accuracy_score') is not None:
+                    print(f"  Avg accuracy score: {stats['avg_accuracy_score']:.3f} (0.0-1.0)")
+        
+        # Speed comparison
+        print("\n" + "=" * 80)
+        print("SPEED COMPARISON")
+        print("-" * 80)
+        if 'vector' in summary and 'graph' in summary:
+            vector_avg = summary['vector']['avg_execution_time_ms']
+            graph_avg = summary['graph']['avg_execution_time_ms']
+            speedup = graph_avg / vector_avg if vector_avg > 0 else 0
+            print(f"Vector vs Graph: {speedup:.2f}x {'faster' if speedup > 1 else 'slower'}")
+        
+        if 'hybrid' in summary and 'vector' in summary:
+            hybrid_avg = summary['hybrid']['avg_execution_time_ms']
+            vector_avg = summary['vector']['avg_execution_time_ms']
+            overhead = (hybrid_avg / vector_avg - 1) * 100 if vector_avg > 0 else 0
+            print(f"Hybrid overhead vs Vector: {overhead:+.1f}%")
         
         print("\n" + "=" * 80)
     
@@ -1028,36 +876,17 @@ Score should be between 0.0 and 1.0."""
         output_file: str
     ):
         """Save evaluation results to JSON file."""
-        compare_ctx = evaluation_results.get('compare_contextualization', False)
+        # Convert SearchMetrics objects to dicts
+        serializable_results = {}
+        for method, metrics_list in evaluation_results['results'].items():
+            serializable_results[method] = [asdict(m) for m in metrics_list]
         
-        if compare_ctx:
-            # Convert SearchMetrics objects to dicts for both modes
-            serializable_results = {}
-            for mode in ['with_contextualization', 'without_contextualization']:
-                serializable_results[mode] = {}
-                for method, metrics_list in evaluation_results['results'][mode].items():
-                    serializable_results[mode][method] = [asdict(m) for m in metrics_list]
-            
-            output = {
-                'results': serializable_results,
-                'summary': evaluation_results['summary'],
-                'test_queries': evaluation_results['test_queries'],
-                'top_k': evaluation_results['top_k'],
-                'compare_contextualization': True
-            }
-        else:
-            # Convert SearchMetrics objects to dicts
-            serializable_results = {}
-            for method, metrics_list in evaluation_results['results'].items():
-                serializable_results[method] = [asdict(m) for m in metrics_list]
-            
-            output = {
-                'results': serializable_results,
-                'summary': evaluation_results['summary'],
-                'test_queries': evaluation_results['test_queries'],
-                'top_k': evaluation_results['top_k'],
-                'compare_contextualization': False
-            }
+        output = {
+            'results': serializable_results,
+            'summary': evaluation_results['summary'],
+            'test_queries': evaluation_results['test_queries'],
+            'top_k': evaluation_results['top_k']
+        }
         
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(output, f, indent=2)
@@ -1074,12 +903,17 @@ def main():
     parser.add_argument("--output", type=str, default="evaluation_results.json", 
                        help="Output file for results")
     parser.add_argument("--top-k", type=int, default=10, help="Top K results")
-    parser.add_argument("--compare-contextualization", action="store_true",
-                       help="Compare results with and without contextualization")
     parser.add_argument("--no-accuracy", action="store_true",
                        help="Skip accuracy evaluation (faster)")
+    parser.add_argument("--verbose", action="store_true", default=True,
+                       help="Show detailed progress (default: True)")
+    parser.add_argument("--quiet", action="store_true",
+                       help="Show simplified progress view (overrides --verbose)")
     
     args = parser.parse_args()
+    
+    # Handle quiet flag
+    verbose = args.verbose and not args.quiet
     
     # Get project root
     project_root = Path(__file__).parent.parent.parent
@@ -1118,12 +952,12 @@ def main():
             data = json.load(f)
             test_queries = data.get('queries', test_queries)
     
-    # Run evaluation
+    # Run evaluation (answer generation is mandatory)
     results = evaluator.run_evaluation_suite(
         test_queries=test_queries,
         top_k=args.top_k,
-        compare_contextualization=args.compare_contextualization,
-        evaluate_accuracy=not args.no_accuracy
+        evaluate_accuracy=not args.no_accuracy,
+        verbose=verbose
     )
     
     # Print report

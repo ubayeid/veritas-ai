@@ -128,9 +128,20 @@ The query engine supports three databases:
 
 All parameters are customizable via `.env` file. See `CONFIGURATION.md` for complete list.
 
+### Recommended Settings (Best Balance)
+
+**Optimal defaults for pure vector search:**
+- `top_k`: 10 ✅ (good balance of speed and quality)
+- `similarity_threshold`: 0.0 ✅ (include all, rank by similarity)
+- `rerank`: True ✅ (improves relevance)
+- `generate_answer`: True ✅ (provides comprehensive answers)
+- `db_names`: None ✅ (search all databases)
+
+See `RECOMMENDED_SETTINGS.md` for detailed guidance.
+
 ### Key Search Settings (via .env)
 
-- **DEFAULT_TOP_K**: Number of results to retrieve (default: 10)
+- **DEFAULT_TOP_K**: Number of results to retrieve (default: 10, recommended: 10)
 - **LLM_MODEL**: Model for reranking/answers (default: gpt-4)
 - **LLM_TEMPERATURE**: Creativity for answers (default: 0.3)
 - **LLM_MAX_TOKENS**: Max tokens in answers (default: 3000)
@@ -140,8 +151,7 @@ All parameters are customizable via `.env` file. See `CONFIGURATION.md` for comp
 
 You can customize prompts by editing:
 - `backend/searching/prompts/rerank_prompt.txt`
-- `backend/searching/prompts/contextualize_prompt.txt`
-- `backend/searching/prompts/query_expansion_prompt.txt`
+- `backend/searching/prompts/answer_generation_prompt.txt`
 
 ## Hybrid Search Mode
 

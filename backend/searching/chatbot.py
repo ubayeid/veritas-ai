@@ -173,7 +173,7 @@ class Chatbot:
         db_names: Optional[List[str]] = None,
         top_k: int = 10,
         rerank: bool = True,
-        contextualize: bool = True,
+        generate_answer: bool = True,
         show_results: bool = True,
         similarity_threshold: float = 0.0,
         use_hybrid: Optional[bool] = None
@@ -186,7 +186,7 @@ class Chatbot:
             db_names: Databases to search (None = all, only for vector search)
             top_k: Number of results to retrieve
             rerank: Whether to rerank results
-            contextualize: Whether to generate contextualized answer
+            generate_answer: Whether to generate answer using LLM
             show_results: Whether to display raw results
             similarity_threshold: Minimum similarity score
             use_hybrid: Override hybrid mode for this query (None = use default)
@@ -203,7 +203,7 @@ class Chatbot:
                 query=query,
                 top_k=top_k,
                 rerank=rerank,
-                contextualize=contextualize
+                generate_answer=generate_answer
             )
             # Add query_types and sources_used to result for display
             if 'query_types' in result:
@@ -217,7 +217,7 @@ class Chatbot:
                 db_names=db_names,
                 top_k=top_k,
                 rerank=rerank,
-                contextualize=contextualize,
+                generate_answer=generate_answer,
                 similarity_threshold=similarity_threshold
             )
         
@@ -225,7 +225,7 @@ class Chatbot:
         if show_results and result['results']:
             print(self.format_results(result['results']))
         
-        # Display contextualized answer
+        # Display generated answer
         if result['answer']:
             print(f"\n{'='*80}")
             print("ANSWER:")
@@ -266,7 +266,7 @@ class Chatbot:
             'db_names': None,  # None = all databases (vector mode only)
             'top_k': 10,
             'rerank': True,
-            'contextualize': True,
+            'generate_answer': True,
             'show_results': True,
             'similarity_threshold': 0.0,
             'use_hybrid': self.use_hybrid
@@ -310,7 +310,7 @@ Search Settings:
   - Databases: Search across company, aiid, and/or standards databases (vector mode only)
   - Top K: Number of results to retrieve (default: 10)
   - Rerank: Use LLM to rerank results (default: True)
-  - Contextualize: Generate contextualized answer (default: True)
+  - Generate Answer: Generate answer using LLM (default: True)
   - Similarity Threshold: Minimum similarity score (default: 0.0, vector mode only)
 
 Examples:
@@ -377,7 +377,7 @@ Examples:
                             print(f"  Databases: {settings['db_names'] or 'All'}")
                         print(f"  Top K: {settings['top_k']}")
                         print(f"  Rerank: {settings['rerank']}")
-                        print(f"  Contextualize: {settings['contextualize']}")
+                        print(f"  Generate Answer: {settings['generate_answer']}")
                         print(f"  Show Results: {settings['show_results']}")
                         if not settings['use_hybrid']:
                             print(f"  Similarity Threshold: {settings['similarity_threshold']}")
@@ -413,9 +413,9 @@ Examples:
                             rerank_input = input().strip().lower()
                             settings['rerank'] = rerank_input != 'n'
                             
-                            print("Contextualize (y/n, default y): ", end='')
+                            print("Generate Answer (y/n, default y): ", end='')
                             ctx_input = input().strip().lower()
-                            settings['contextualize'] = ctx_input != 'n'
+                            settings['generate_answer'] = ctx_input != 'n'
                             
                             print("Show Results (y/n, default y): ", end='')
                             show_input = input().strip().lower()
@@ -440,7 +440,7 @@ Examples:
                     db_names=settings['db_names'],
                     top_k=settings['top_k'],
                     rerank=settings['rerank'],
-                    contextualize=settings['contextualize'],
+                    generate_answer=settings['generate_answer'],
                     show_results=settings['show_results'],
                     similarity_threshold=settings['similarity_threshold'],
                     use_hybrid=settings['use_hybrid']

@@ -107,33 +107,53 @@ class HybridQueryEngine:
         
         if article_match:
             article_id = f"Art{article_match.group(1)}"
+            print(f"  → Found article ID: {article_id}")
+            
+            # Check if query specifically asks for clauses or incidents
+            asks_for_clauses = 'clause' in query_lower or 'addressing' in query_lower
+            asks_for_incidents = 'incident' in query_lower or 'violating' in query_lower or 'violates' in query_lower
+            
+            # If query doesn't specify, return both; otherwise prioritize what's asked
+            if not asks_for_clauses and not asks_for_incidents:
+                asks_for_clauses = True  # Default to clauses if not specified
+                asks_for_incidents = True
             
             # Find clauses addressing this article
-            clauses = self.graph_queries.find_clauses_by_article(article_id)
-            for clause in clauses:
-                results.append({
-                    'id': clause['clause_id'],
-                    'text': clause['clause_text'],
-                    'document_name': clause['document_name'],
-                    'article_id': article_id,
-                    'type': 'clause',
-                    'source': 'graph_traversal',
-                    'relationship': 'ADDRESSES'
-                })
+            if asks_for_clauses:
+                print(f"  → Searching for clauses addressing {article_id}...")
+                clauses = self.graph_queries.find_clauses_by_article(article_id)
+                print(f"  → Found {len(clauses)} clauses")
+                for clause in clauses:
+                    results.append({
+                        'id': clause['clause_id'],
+                        'text': clause['clause_text'],
+                        'document_name': clause['document_name'],
+                        'article_id': article_id,
+                        'type': 'clause',
+                        'source': 'graph_traversal',
+                        'relationship': 'ADDRESSES'
+                    })
+            else:
+                print(f"  → Skipping clauses (query asks for incidents)")
             
             # Find incidents violating this article
-            incidents = self.graph_queries.find_incidents_by_article(article_id)
-            for incident in incidents:
-                results.append({
-                    'id': incident['incident_id'],
-                    'text': incident['description'],
-                    'title': incident['incident_title'],
-                    'risk_type': incident['risk_type'],
-                    'article_id': article_id,
-                    'type': 'incident',
-                    'source': 'graph_traversal',
-                    'relationship': 'VIOLATES'
-                })
+            if asks_for_incidents:
+                print(f"  → Searching for incidents violating {article_id}...")
+                incidents = self.graph_queries.find_incidents_by_article(article_id)
+                print(f"  → Found {len(incidents)} incidents")
+                for incident in incidents:
+                    results.append({
+                        'id': incident['incident_id'],
+                        'text': incident['description'],
+                        'title': incident['incident_title'],
+                        'risk_type': incident['risk_type'],
+                        'article_id': article_id,
+                        'type': 'incident',
+                        'source': 'graph_traversal',
+                        'relationship': 'VIOLATES'
+                    })
+            else:
+                print(f"  → Skipping incidents (query asks for clauses)")
         
         # Compliance gap and mismatch queries
         if 'gap' in query_lower or 'missing' in query_lower or 'not covered' in query_lower or 'mismatch' in query_lower or 'compare' in query_lower or 'difference' in query_lower:
@@ -236,12 +256,30 @@ class HybridQueryEngine:
         
         query_types = self.detect_query_type(query)
         
+        # Debug: Print query type detection
+        print(f"\n{'='*80}")
+        print(f"HYBRID SEARCH DEBUG")
+        print(f"{'='*80}")
+        print(f"Query: '{query}'")
+        print(f"Top K: {top_k}")
+        print(f"RRF K: {rrf_k}")
+        print(f"\nQuery Type Detection:")
+        print(f"  - is_semantic_query: {query_types['is_semantic_query']}")
+        print(f"  - is_graph_query: {query_types['is_graph_query']}")
+        print(f"  - is_relationship_query: {query_types['is_relationship_query']}")
+        print(f"\nSearch Settings:")
+        print(f"  - use_faiss: {use_faiss}")
+        print(f"  - use_graph_traversal: {use_graph_traversal}")
+        
         # Separate results by source for RRF
         vector_results = []
         graph_results = []
         
         # 1. Vector Search (FAISS)
         if use_faiss and query_types['is_semantic_query']:
+            print(f"\n{'─'*80}")
+            print("STEP 1: Vector Search (FAISS)")
+            print(f"{'─'*80}")
             try:
                 faiss_results = self.vector_engine.search(
                     query=query,
@@ -250,35 +288,111 @@ class HybridQueryEngine:
                     similarity_threshold=0.0
                 )
                 
+                print(f"  FAISS returned {len(faiss_results)} results")
+                if faiss_results:
+                    print(f"  Similarity range: {faiss_results[0]['similarity']:.4f} to {faiss_results[-1]['similarity']:.4f}")
+                    print(f"  Top 3 results:")
+                    for i, r in enumerate(faiss_results[:3], 1):
+                        print(f"    {i}. [{r.get('database', 'unknown')}] similarity={r['similarity']:.4f} | {r['text'][:60]}...")
+                
                 # Keep original similarity scores for reference, but RRF uses rank
                 for result in faiss_results:
                     vector_results.append({
                         **result,
                         'source': 'faiss_vector'
                     })
+                print(f"  → Added {len(vector_results)} vector results")
             except Exception as e:
-                print(f"FAISS search error: {e}")
+                print(f"  ❌ FAISS search error: {e}")
+        else:
+            print(f"\n{'─'*80}")
+            print("STEP 1: Vector Search (FAISS) - SKIPPED")
+            print(f"{'─'*80}")
+            if not use_faiss:
+                print(f"  Reason: use_faiss=False")
+            elif not query_types['is_semantic_query']:
+                print(f"  Reason: Query detected as graph query, not semantic")
         
         # 2. Graph Traversal
         if use_graph_traversal and query_types['is_graph_query']:
+            print(f"\n{'─'*80}")
+            print("STEP 2: Graph Traversal (Neo4j)")
+            print(f"{'─'*80}")
             try:
                 graph_results_raw = self.graph_traversal_search(query)
+                print(f"  Graph traversal returned {len(graph_results_raw)} results")
+                
+                # Count by type
+                type_counts = {}
+                for r in graph_results_raw:
+                    r_type = r.get('type', 'unknown')
+                    type_counts[r_type] = type_counts.get(r_type, 0) + 1
+                if type_counts:
+                    print(f"  Results by type: {type_counts}")
+                
+                if graph_results_raw:
+                    print(f"  Top 3 results:")
+                    for i, r in enumerate(graph_results_raw[:3], 1):
+                        r_type = r.get('type', 'unknown')
+                        r_text = r.get('text', r.get('description', ''))[:60]
+                        print(f"    {i}. [{r_type}] {r_text}...")
                 
                 for result in graph_results_raw:
                     graph_results.append({
                         **result,
                         'source': 'graph_traversal'
                     })
+                print(f"  → Added {len(graph_results)} graph results")
             except Exception as e:
-                print(f"Graph traversal error: {e}")
+                print(f"  ❌ Graph traversal error: {e}")
+        else:
+            print(f"\n{'─'*80}")
+            print("STEP 2: Graph Traversal (Neo4j) - SKIPPED")
+            print(f"{'─'*80}")
+            if not use_graph_traversal:
+                print(f"  Reason: use_graph_traversal=False")
+            elif not query_types['is_graph_query']:
+                print(f"  Reason: Query detected as semantic query, not graph query")
         
-        # Merge results using RRF
-        merged_results = self._merge_and_rank_results_rrf(
-            vector_results, 
-            graph_results, 
-            top_k, 
-            rrf_k
-        )
+        # Merge results using RRF (only if both sources have results)
+        print(f"\n{'─'*80}")
+        print("STEP 3: Result Merging")
+        print(f"{'─'*80}")
+        print(f"  Vector results: {len(vector_results)}")
+        print(f"  Graph results: {len(graph_results)}")
+        print(f"  Total before merge: {len(vector_results) + len(graph_results)}")
+        
+        # If only one source has results, skip RRF (already sorted)
+        if len(vector_results) > 0 and len(graph_results) == 0:
+            print(f"  → Only vector results: skipping RRF, returning sorted vector results")
+            merged_results = vector_results[:top_k]
+        elif len(graph_results) > 0 and len(vector_results) == 0:
+            print(f"  → Only graph results: skipping RRF, returning graph results")
+            merged_results = graph_results[:top_k]
+        elif len(vector_results) > 0 and len(graph_results) > 0:
+            print(f"  → Both sources have results: using RRF to merge")
+            merged_results = self._merge_and_rank_results_rrf(
+                vector_results, 
+                graph_results, 
+                top_k, 
+                rrf_k
+            )
+        else:
+            print(f"  → No results from either source")
+            merged_results = []
+        
+        print(f"  → Merged to {len(merged_results)} results")
+        if merged_results:
+            print(f"  Top 3 merged results:")
+            for i, r in enumerate(merged_results[:3], 1):
+                source = r.get('source', 'unknown')
+                rrf_score = r.get('rrf_score', 0)
+                v_rank = r.get('vector_rank', 'N/A')
+                g_rank = r.get('graph_rank', 'N/A')
+                r_text = r.get('text', r.get('description', ''))[:50]
+                print(f"    {i}. [{source}] RRF={rrf_score:.6f} | V_rank={v_rank} G_rank={g_rank} | {r_text}...")
+        
+        print(f"\n{'='*80}\n")
         
         return {
             'query': query,
@@ -314,6 +428,7 @@ class HybridQueryEngine:
         all_results = vector_results + graph_results
         has_mismatch = any(r.get('analysis_type') == 'mismatch' for r in all_results)
         if has_mismatch:
+            print(f"  → Using mismatch analysis ordering (summary → coverage → gaps)")
             # Separate by type
             summary_results = [r for r in all_results if r.get('type') == 'summary']
             coverage_results = [r for r in all_results if r.get('type') == 'coverage']
@@ -330,6 +445,8 @@ class HybridQueryEngine:
         
         # Build RRF scores
         rrf_scores = {}
+        
+        print(f"  → Using RRF formula: score = Σ 1/(k + rank), where k={k}")
         
         # Process vector results (already sorted by similarity)
         for rank, result in enumerate(vector_results, start=1):
@@ -383,6 +500,14 @@ class HybridQueryEngine:
             reverse=True
         )]
         
+        # Debug: Show RRF scoring details
+        if len(rrf_scores) > 0:
+            print(f"  → Calculated RRF scores for {len(rrf_scores)} unique results")
+            hybrid_count = sum(1 for item in rrf_scores.values() 
+                             if item['vector_rank'] is not None and item['graph_rank'] is not None)
+            if hybrid_count > 0:
+                print(f"  → Found {hybrid_count} results appearing in both sources (hybrid)")
+        
         return merged[:top_k]
     
     def _get_result_id(self, result: Dict) -> str:
@@ -409,17 +534,17 @@ class HybridQueryEngine:
         return str(result)
     
     def hybrid_query(self, query: str, top_k: int = 10,
-                    rerank: bool = True, contextualize: bool = True,
+                    rerank: bool = True, generate_answer: bool = True,
                     rrf_k: int = None) -> Dict[str, Any]:
         """
-        Complete hybrid query pipeline with reranking and contextualization.
+        Complete hybrid query pipeline with reranking and answer generation.
         Uses Reciprocal Rank Fusion (RRF) to merge vector and graph results.
         
         Args:
             query: User query
             top_k: Number of results
             rerank: Whether to rerank results
-            contextualize: Whether to generate contextualized answer
+            generate_answer: Whether to generate answer using LLM
             rrf_k: RRF constant (defaults to RRF_K from .env)
             
         Returns:
@@ -434,10 +559,10 @@ class HybridQueryEngine:
         if rerank and results:
             results = self.vector_engine.rerank_results(query, results, top_n=min(8, len(results)))
         
-        # Generate contextualized answer
+        # Generate answer
         answer = None
-        if contextualize and results:
-            answer = self.vector_engine.contextualize_results(query, results[:8])
+        if generate_answer and results:
+            answer = self.vector_engine.generate_answer(query, results[:8])
         
         return {
             'query': query,

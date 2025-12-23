@@ -1,6 +1,6 @@
 """
 Query Engine for Vector Database Search
-Supports querying across multiple FAISS vector databases with reranking and contextualization.
+Supports querying across multiple FAISS vector databases with reranking and answer generation.
 """
 
 import os
@@ -25,8 +25,6 @@ LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "3000"))
 RERANK_TEMPERATURE = float(os.getenv("RERANK_TEMPERATURE", "0.1"))
 RERANK_MAX_TOKENS = int(os.getenv("RERANK_MAX_TOKENS", "100"))
-EXPANSION_TEMPERATURE = float(os.getenv("EXPANSION_TEMPERATURE", "0.3"))
-EXPANSION_MAX_TOKENS = int(os.getenv("EXPANSION_MAX_TOKENS", "300"))
 
 
 def get_openai_client():
@@ -151,132 +149,6 @@ class VectorQueryEngine:
         
         self.client = get_openai_client()
     
-    def expand_query(self, query: str) -> Dict[str, Any]:
-        """
-        Expand and refine a user query to improve search results.
-        
-        Args:
-            query: Original user query
-            
-        Returns:
-            Dictionary with refined_query, alternative_queries, and key_terms
-        """
-        # Load query expansion prompt
-        prompt_file = self.base_dir / "backend" / "searching" / "prompts" / "query_expansion_prompt.txt"
-        expansion_prompt = ""
-        if prompt_file.exists():
-            with open(prompt_file, 'r', encoding='utf-8') as f:
-                expansion_prompt = f.read()
-        else:
-            expansion_prompt = """You are a query expansion expert. Given a user query, generate:
-1. A refined version that clarifies the intent
-2. 2-3 alternative phrasings
-3. Key terms to search for
-
-Return ONLY a JSON object:
-{
-  "refined_query": "improved version",
-  "alternative_queries": ["alt1", "alt2"],
-  "key_terms": ["term1", "term2"]
-}"""
-        
-        full_prompt = f"""{expansion_prompt}
-
-User Query: {query}
-
-Generate the expanded query information:"""
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=LLM_MODEL,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a query expansion expert. Return only valid JSON."
-                    },
-                    {
-                        "role": "user",
-                        "content": full_prompt
-                    }
-                ],
-                temperature=EXPANSION_TEMPERATURE,
-                max_tokens=EXPANSION_MAX_TOKENS
-            )
-            
-            result_text = response.choices[0].message.content.strip()
-            
-            # Extract JSON from response (handle markdown code blocks)
-            json_match = re.search(r'\{[^{}]*\}', result_text, re.DOTALL)
-            if json_match:
-                result_text = json_match.group(0)
-            
-            expanded = json.loads(result_text)
-            
-            # Ensure all fields exist
-            return {
-                'refined_query': expanded.get('refined_query', query),
-                'alternative_queries': expanded.get('alternative_queries', []),
-                'key_terms': expanded.get('key_terms', [])
-            }
-        except Exception as e:
-            print(f"Warning: Query expansion failed: {str(e)}. Using original query.")
-            return {
-                'refined_query': query,
-                'alternative_queries': [],
-                'key_terms': []
-            }
-    
-    def search_with_expansion(
-        self,
-        query: str,
-        db_names: Optional[List[str]] = None,
-        top_k: int = 10,
-        similarity_threshold: float = 0.0,
-        use_expansion: bool = True
-    ) -> List[Dict[str, Any]]:
-        """
-        Search with query expansion for better results.
-        
-        Args:
-            query: Original query
-            db_names: Databases to search
-            top_k: Number of results per query
-            similarity_threshold: Minimum similarity
-            use_expansion: Whether to use query expansion
-            
-        Returns:
-            Combined search results
-        """
-        if not use_expansion:
-            return self.search(query, db_names, top_k, similarity_threshold)
-        
-        # Expand query
-        expanded = self.expand_query(query)
-        refined_query = expanded['refined_query']
-        alternative_queries = expanded['alternative_queries']
-        
-        # Search with refined query
-        all_results = self.search(refined_query, db_names, top_k, similarity_threshold)
-        
-        # Also search with alternative queries (with fewer results each)
-        for alt_query in alternative_queries[:2]:  # Limit to 2 alternatives
-            alt_results = self.search(alt_query, db_names, top_k // 2, similarity_threshold)
-            all_results.extend(alt_results)
-        
-        # Deduplicate by text content
-        seen_texts = set()
-        unique_results = []
-        for result in all_results:
-            text_key = result['text'][:100]  # Use first 100 chars as key
-            if text_key not in seen_texts:
-                seen_texts.add(text_key)
-                unique_results.append(result)
-        
-        # Re-sort by similarity
-        unique_results.sort(key=lambda x: x['similarity'], reverse=True)
-        
-        return unique_results[:top_k * 2]  # Return up to 2x top_k for better coverage
-    
     def load_database(self, db_name: str):
         """
         Load a specific database into memory.
@@ -305,17 +177,17 @@ Generate the expanded query information:"""
         self,
         query: str,
         db_names: Optional[List[str]] = None,
-        top_k: int = 10,
-        similarity_threshold: float = 0.0
+        top_k: int = 10,  # Recommended: 10 (good balance of speed and quality)
+        similarity_threshold: float = 0.0  # Recommended: 0.0 (include all, rank by similarity)
     ) -> List[Dict[str, Any]]:
         """
         Search across specified databases.
         
         Args:
             query: Query text
-            db_names: List of database names to search (None = all)
-            top_k: Number of results per database
-            similarity_threshold: Minimum similarity score
+            db_names: List of database names to search (None = all, recommended: None for comprehensive results)
+            top_k: Number of results per database (recommended: 10)
+            similarity_threshold: Minimum similarity score (recommended: 0.0)
             
         Returns:
             List of search results with metadata
@@ -507,35 +379,35 @@ Rank the results by relevance to the query. Return only the result indices (0-{l
             print(f"Warning: Reranking failed: {str(e)}. Returning original results.")
             return results[:top_n]
     
-    def contextualize_results(
+    def generate_answer(
         self,
         query: str,
         results: List[Dict[str, Any]],
-        contextualize_prompt: Optional[str] = None
+        answer_prompt: Optional[str] = None
     ) -> str:
         """
-        Generate a contextualized answer based on search results.
+        Generate an answer based on search results using LLM.
         
         Args:
             query: User query
             results: List of search results
-            contextualize_prompt: Custom contextualization prompt (optional)
+            answer_prompt: Custom answer generation prompt (optional)
             
         Returns:
-            Contextualized answer text
+            Generated answer text
         """
         if not results:
             return "I couldn't find any relevant information to answer your query. Please try:\n- Rephrasing your question\n- Checking if the databases are loaded\n- Lowering the similarity threshold in settings"
         
         # Load default prompt if not provided
-        if contextualize_prompt is None:
-            prompt_file = self.base_dir / "backend" / "searching" / "prompts" / "contextualize_prompt.txt"
+        if answer_prompt is None:
+            prompt_file = self.base_dir / "backend" / "searching" / "prompts" / "answer_generation_prompt.txt"
             if prompt_file.exists():
                 with open(prompt_file, 'r', encoding='utf-8') as f:
-                    contextualize_prompt = f.read()
+                    answer_prompt = f.read()
             else:
                 # Default prompt
-                contextualize_prompt = """You are a helpful assistant that answers questions based on provided search results.
+                answer_prompt = """You are a helpful assistant that answers questions based on provided search results.
 Use the search results to provide a comprehensive, accurate answer to the user's query.
 Cite specific sources when referencing information.
 If the search results don't fully answer the query, say so and provide what information is available."""
@@ -575,7 +447,7 @@ If the search results don't fully answer the query, say so and provide what info
                 f"(Similarity: {similarity:.4f})\n"
             )
         
-        full_prompt = f"""{contextualize_prompt}
+        full_prompt = f"""{answer_prompt}
 
 User Query: {query}
 
@@ -610,59 +482,55 @@ Based on the above search results, provide a comprehensive answer to the user's 
             
             return answer
         except Exception as e:
-            raise Exception(f"Error generating contextualized answer: {str(e)}")
+            raise Exception(f"Error generating answer: {str(e)}")
     
     def query(
         self,
         query: str,
-        db_names: Optional[List[str]] = None,
-        top_k: int = 10,
-        rerank: bool = True,
-        contextualize: bool = True,
-        similarity_threshold: float = 0.0,
-        use_expansion: bool = True
+        db_names: Optional[List[str]] = None,  # Recommended: None (search all databases)
+        top_k: int = 10,  # Recommended: 10 (optimal balance)
+        rerank: bool = True,  # Recommended: True (improves relevance)
+        generate_answer: bool = True,  # Recommended: True (provides comprehensive answers)
+        similarity_threshold: float = 0.0  # Recommended: 0.0 (include all, rank by similarity)
     ) -> Dict[str, Any]:
         """
-        Complete query pipeline: search, rerank, and contextualize.
+        Complete query pipeline: search, rerank, and generate answer.
+        
+        RECOMMENDED SETTINGS (best balance of speed and quality):
+        - top_k: 10
+        - similarity_threshold: 0.0
+        - rerank: True
+        - generate_answer: True
+        - db_names: None (search all databases)
         
         Args:
             query: User query
-            db_names: Databases to search (None = all)
-            top_k: Number of initial results
-            rerank: Whether to rerank results
-            contextualize: Whether to generate contextualized answer
-            similarity_threshold: Minimum similarity score
-            use_expansion: Whether to use query expansion
+            db_names: Databases to search (None = all, recommended: None)
+            top_k: Number of initial results (recommended: 10)
+            rerank: Whether to rerank results (recommended: True)
+            generate_answer: Whether to generate answer using LLM (recommended: True)
+            similarity_threshold: Minimum similarity score (recommended: 0.0)
             
         Returns:
-            Dictionary with search results and contextualized answer
+            Dictionary with search results and generated answer
         """
-        # Step 1: Search (with expansion if enabled)
-        if use_expansion:
-            results = self.search_with_expansion(
-                query=query,
-                db_names=db_names,
-                top_k=top_k,
-                similarity_threshold=similarity_threshold,
-                use_expansion=True
-            )
-        else:
-            results = self.search(
-                query=query,
-                db_names=db_names,
-                top_k=top_k,
-                similarity_threshold=similarity_threshold
-            )
+        # Step 1: Search
+        results = self.search(
+            query=query,
+            db_names=db_names,
+            top_k=top_k,
+            similarity_threshold=similarity_threshold
+        )
         
         # Step 2: Rerank (if enabled)
         if rerank and results:
             results = self.rerank_results(query, results, top_n=min(8, len(results)))  # Increased from 5 to 8
         
-        # Step 3: Contextualize (if enabled)
+        # Step 3: Generate answer (if enabled)
         answer = None
-        if contextualize:
+        if generate_answer:
             # Use more results for better context (up to 8)
-            answer = self.contextualize_results(query, results[:8])
+            answer = self.generate_answer(query, results[:8])
         
         return {
             'query': query,

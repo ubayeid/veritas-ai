@@ -113,7 +113,7 @@ def query():
         "db_names": ["company", "aiid", "standards"] or null for all,
         "top_k": 10,
         "rerank": true,
-        "contextualize": true,
+        "generate_answer": true,
         "similarity_threshold": 0.0
     }
     """
@@ -130,9 +130,8 @@ def query():
         db_names = data.get('db_names', None)
         top_k = data.get('top_k', 10)
         rerank = data.get('rerank', True)
-        contextualize = data.get('contextualize', True)
+        generate_answer = data.get('generate_answer', True)
         similarity_threshold = data.get('similarity_threshold', 0.0)
-        use_expansion = data.get('use_expansion', True)  # Enable query expansion by default
         
         # Execute query
         result = query_engine.query(
@@ -140,9 +139,8 @@ def query():
             db_names=db_names,
             top_k=top_k,
             rerank=rerank,
-            contextualize=contextualize,
-            similarity_threshold=similarity_threshold,
-            use_expansion=use_expansion
+            generate_answer=generate_answer,
+            similarity_threshold=similarity_threshold
         )
         
         # Format results for frontend
@@ -187,7 +185,7 @@ def query():
 @app.route('/api/search', methods=['POST'])
 def search():
     """
-    Search endpoint (without contextualization).
+    Search endpoint (without answer generation).
     
     Expected JSON body:
     {
@@ -258,7 +256,7 @@ def hybrid_query():
         "query": "user query string",
         "top_k": 10,
         "rerank": true,
-        "contextualize": true,
+        "generate_answer": true,
         "use_faiss": true,
         "use_graph_traversal": true,
         "rrf_k": 60
@@ -279,7 +277,7 @@ def hybrid_query():
         query_text = data['query']
         top_k = data.get('top_k', 10)
         rerank = data.get('rerank', True)
-        contextualize = data.get('contextualize', True)
+        generate_answer = data.get('generate_answer', True)
         use_faiss = data.get('use_faiss', True)
         use_graph_traversal = data.get('use_graph_traversal', True)
         rrf_k = data.get('rrf_k', None)  # Optional, uses default from .env if not provided
@@ -289,7 +287,7 @@ def hybrid_query():
             query=query_text,
             top_k=top_k,
             rerank=rerank,
-            contextualize=contextualize
+            generate_answer=generate_answer
         )
         
         # Format results for frontend

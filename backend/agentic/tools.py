@@ -247,7 +247,7 @@ class ToolRegistry:
             query=query,
             top_k=100,
             rerank=True,
-            contextualize=False
+            generate_answer=False
         )
         
         # Extract gap information
@@ -288,7 +288,7 @@ class ToolRegistry:
             query=query,
             top_k=top_k,
             rerank=True,
-            contextualize=False
+            generate_answer=False
         )
         
         mappings = []
@@ -327,7 +327,7 @@ class ToolRegistry:
             db_names=['company', 'standards'],
             top_k=top_k,
             rerank=True,
-            contextualize=True
+            generate_answer=True
         )
         
         return {
@@ -350,7 +350,7 @@ class ToolRegistry:
             db_names=['aiid'],
             top_k=top_k,
             rerank=True,
-            contextualize=False
+            generate_answer=False
         )
         
         incidents = []
@@ -373,7 +373,7 @@ class ToolRegistry:
             db_names=db_names,
             top_k=top_k,
             rerank=True,
-            contextualize=True
+            generate_answer=True
         )
         
         return {

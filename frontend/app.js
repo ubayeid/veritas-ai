@@ -154,7 +154,6 @@ async function handleSend() {
                 } else {
                     errorMsg += `- Check if the databases are properly loaded\n`;
                 }
-                errorMsg += `- Enable Query Expansion in settings`;
                 addMessage('bot', errorMsg);
             } else {
                 addMessage('bot', 'No answer generated. Please enable "Generate Answer" in settings.');
@@ -186,8 +185,7 @@ function getSettings() {
         top_k: parseInt(document.getElementById('top-k').value) || 10,
         rerank: document.getElementById('rerank').checked,
         contextualize: document.getElementById('contextualize').checked,
-        similarity_threshold: parseFloat(document.getElementById('threshold').value) || 0.0,
-        use_expansion: document.getElementById('use-expansion') ? document.getElementById('use-expansion').checked : true
+        similarity_threshold: parseFloat(document.getElementById('threshold').value) || 0.0
     };
 }
 
