@@ -375,9 +375,20 @@ Copy `.env.example` to `.env` and customize as needed!
 
 ## 📚 Documentation
 
+### User Guides
 - **[docs/USAGE.md](docs/USAGE.md)** - Usage guide with sample questions and Cypher queries
+- **[docs/SETUP.md](docs/SETUP.md)** - Setup and configuration guide (xAI, local embeddings, Neo4j)
+- **[miscellaneous/USER_MANUAL.md](miscellaneous/USER_MANUAL.md)** - Complete user manual
+
+### Technical Documentation
 - **[docs/TECHNICAL.md](docs/TECHNICAL.md)** - Technical architecture and data flow
+- **[docs/SEARCH_ARCHITECTURE.md](docs/SEARCH_ARCHITECTURE.md)** - Complete search architecture (vector, graph, hybrid)
 - **[docs/AGENTIC_SYSTEM.md](docs/AGENTIC_SYSTEM.md)** - Agentic system guide
+
+### Research & Publication
+- **[docs/EXPERIMENTAL_SETUP.md](docs/EXPERIMENTAL_SETUP.md)** - Experimental setup for reproducibility
+- **[docs/DATASET.md](docs/DATASET.md)** - Dataset documentation
+- **[docs/PUBLICATION_READINESS.md](docs/PUBLICATION_READINESS.md)** - Publication readiness checklist
 
 ---
 

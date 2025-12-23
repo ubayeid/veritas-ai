@@ -245,6 +245,79 @@ def search():
         }), 500
 
 
+@app.route('/api/graph_query', methods=['POST'])
+def graph_query():
+    """
+    Graph query endpoint using Neo4j graph traversal.
+    Standalone graph search with scoring, reranking, and answer generation.
+    
+    Expected JSON body:
+    {
+        "query": "user query string",
+        "top_k": 10,  # Not applied, uses all scored results
+        "rerank": true,
+        "generate_answer": true
+    }
+    """
+    if hybrid_engine is None:
+        init_hybrid_engine()
+    
+    if hybrid_engine is None:
+        return jsonify({'error': 'Hybrid query engine not initialized'}), 500
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'query' not in data:
+            return jsonify({'error': 'Missing required field: query'}), 400
+        
+        query_text = data['query']
+        top_k = data.get('top_k', None)  # Not used, but kept for API consistency
+        rerank = data.get('rerank', True)
+        generate_answer = data.get('generate_answer', True)
+        
+        # Execute graph query
+        result = hybrid_engine.graph_query(
+            query=query_text,
+            top_k=top_k,
+            rerank=rerank,
+            generate_answer=generate_answer
+        )
+        
+        # Format results for frontend
+        formatted_results = []
+        for res in result['results']:
+            formatted_results.append({
+                'id': res.get('id', ''),
+                'text': res.get('text', res.get('description', '')),
+                'title': res.get('title', ''),
+                'type': res.get('type', 'unknown'),
+                'source': res.get('source', 'graph_traversal'),
+                'similarity': res.get('similarity', 0.0),
+                'database': res.get('document_name', 'Graph'),
+                'article_id': res.get('article_id', ''),
+                'risk_type': res.get('risk_type', ''),
+                'violated_articles': res.get('violated_articles', [])
+            })
+        
+        return jsonify({
+            'success': True,
+            'query': query_text,
+            'results': formatted_results,
+            'answer': result.get('answer', ''),
+            'num_results': result['num_results'],
+            'sources_used': result['sources_used']
+        })
+    
+    except Exception as e:
+        print(f"Error processing graph query: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/hybrid_query', methods=['POST'])
 def hybrid_query():
     """

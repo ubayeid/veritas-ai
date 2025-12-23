@@ -27,23 +27,18 @@ import PyPDF2
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client (will be created in get_embeddings function)
+# Import unified API client
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "searching"))
+from api_client import get_embedding_client, get_embedding_model
+
+# Initialize API client (supports both OpenAI and xAI)
 def get_openai_client():
-    """Get OpenAI client instance."""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY not found in .env file")
-    # Initialize client - OpenAI will use the api_key parameter
-    # If there are proxy issues, we can also try without explicit api_key
-    try:
-        return OpenAI(api_key=api_key)
-    except TypeError:
-        # Fallback: set environment variable and initialize without explicit key
-        os.environ["OPENAI_API_KEY"] = api_key
-        return OpenAI()
+    """Get API client instance for embeddings (supports both OpenAI and xAI)."""
+    return get_embedding_client()
 
 # Configuration - can be overridden via .env file
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+EMBEDDING_MODEL = get_embedding_model()
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
 

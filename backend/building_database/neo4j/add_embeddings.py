@@ -11,9 +11,11 @@ from typing import List, Dict, Optional
 
 # Add current directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "searching"))
 from neo4j_connection import Neo4jConnection
 from openai import OpenAI
 from dotenv import load_dotenv
+from api_client import get_embedding_client, get_embedding_model
 
 load_dotenv()
 
@@ -30,12 +32,9 @@ class EmbeddingAdder:
         """
         self.conn = neo4j_conn
         
-        # Initialize OpenAI client
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY not found in .env file")
-        self.client = OpenAI(api_key=api_key)
-        self.embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+        # Initialize API client (supports both OpenAI and xAI)
+        self.client = get_embedding_client()
+        self.embedding_model = get_embedding_model()
     
     def get_embedding(self, text: str) -> List[float]:
         """

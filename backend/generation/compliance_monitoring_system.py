@@ -326,15 +326,12 @@ def save_comparison_report(comparison_results: Dict[str, Any], output_file: str,
 # ============================================================================
 
 def get_openai_client():
-    """Get OpenAI client instance."""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY not found in .env file")
-    try:
-        return OpenAI(api_key=api_key)
-    except TypeError:
-        os.environ["OPENAI_API_KEY"] = api_key
-        return OpenAI()
+    """Get API client instance (supports both OpenAI and xAI)."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent / "searching"))
+    from api_client import get_api_client
+    return get_api_client()
 
 
 def load_prompt(prompt_file: str) -> str:

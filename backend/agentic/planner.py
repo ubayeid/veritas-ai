@@ -4,11 +4,17 @@ Task Planner: Uses LLM to break down complex goals into executable steps
 
 import os
 import json
+import sys
+from pathlib import Path
 from typing import List, Dict, Any
 from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Import unified API client
+sys.path.insert(0, str(Path(__file__).parent.parent / "searching"))
+from api_client import get_api_client, get_llm_model
 
 
 class TaskPlanner:
@@ -17,19 +23,15 @@ class TaskPlanner:
     Uses LLM to understand goals and create structured plans.
     """
     
-    def __init__(self, llm_model: str = "gpt-4"):
+    def __init__(self, llm_model: str = None):
         """
         Initialize task planner.
         
         Args:
-            llm_model: OpenAI model to use for planning
+            llm_model: Model to use for planning (if None, uses configured model from .env)
         """
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment")
-        
-        self.client = OpenAI(api_key=api_key)
-        self.model = llm_model
+        self.client = get_api_client()
+        self.model = llm_model or get_llm_model()
     
     def create_plan(self, goal: str, available_tools: List[Dict], context: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """

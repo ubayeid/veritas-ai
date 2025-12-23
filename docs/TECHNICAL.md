@@ -8,6 +8,9 @@ Complete technical documentation for the Compliance RAG system.
 - [Graph Structure](#graph-structure)
 - [Search Pipeline](#search-pipeline)
 - [Components](#components)
+- [Search Architecture](#search-architecture)
+
+**For detailed search architecture documentation, see [SEARCH_ARCHITECTURE.md](SEARCH_ARCHITECTURE.md)**
 
 ---
 

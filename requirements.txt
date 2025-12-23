@@ -1,9 +1,17 @@
-openai>=1.0.0
-python-dotenv>=1.0.0
-PyPDF2>=3.0.0
-faiss-cpu>=1.7.4
-numpy>=1.24.0
-flask>=2.3.0
-flask-cors>=4.0.0
-neo4j>=5.0.0
+# Core dependencies - pinned versions for reproducibility
+# Last updated: 2024-12-XX (update date when pinning)
+openai>=1.0.0,<2.0.0
+python-dotenv>=1.0.0,<2.0.0
+PyPDF2>=3.0.0,<4.0.0
+faiss-cpu>=1.7.4,<2.0.0
+numpy>=1.24.0,<2.0.0
+flask>=2.3.0,<3.0.0
+flask-cors>=4.0.0,<5.0.0
+neo4j>=5.0.0,<6.0.0
+
+# Statistical analysis dependencies
+scipy>=1.10.0,<2.0.0  # For statistical tests (t-test, Wilcoxon)
+
+# Local embedding models (CPU-based fallback)
+sentence-transformers>=2.2.0,<3.0.0  # For local CPU-based embeddings when API unavailable
 

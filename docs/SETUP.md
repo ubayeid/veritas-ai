@@ -1,19 +1,15 @@
-# User's Manual
+# Setup and Configuration Guide
 
-## Compliance RAG System - User's Manual
-
-This manual provides step-by-step instructions for installing, configuring, and using the Compliance RAG System. This system helps organizations analyze their policies against GDPR requirements using advanced AI-powered search and analysis capabilities.
-
----
+Complete guide for installing, configuring, and running the Compliance RAG System.
 
 ## Table of Contents
 
 1. [System Overview](#system-overview)
-2. [Installation](#installation)
-3. [Configuration](#configuration)
-4. [Building the System](#building-the-system)
-5. [Running the Application](#running-the-application)
-6. [Usage Guide](#usage-guide)
+2. [Prerequisites](#prerequisites)
+3. [Installation](#installation)
+4. [Configuration](#configuration)
+5. [Building the System](#building-the-system)
+6. [Running the Application](#running-the-application)
 7. [Troubleshooting](#troubleshooting)
 
 ---
@@ -36,9 +32,7 @@ The Compliance RAG System is a hybrid search and analysis platform that:
 
 ---
 
-## Installation
-
-### Prerequisites
+## Prerequisites
 
 Before installing the Compliance RAG System, ensure you have:
 
@@ -66,9 +60,11 @@ Before installing the Compliance RAG System, ensure you have:
 4. **Git** (Optional, for cloning the repository)
    - Download from: https://git-scm.com/downloads
 
-### Step-by-Step Installation
+---
 
-#### Step 1: Download/Clone the Project
+## Installation
+
+### Step 1: Download/Clone the Project
 
 **Option A: Clone from Git Repository**
 ```bash
@@ -81,7 +77,7 @@ cd comp_rag
 - Extract to your desired location
 - Navigate to the project directory
 
-#### Step 2: Create Virtual Environment
+### Step 2: Create Virtual Environment
 
 **Windows (PowerShell):**
 ```powershell
@@ -101,7 +97,7 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-#### Step 3: Install Dependencies
+### Step 3: Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -115,7 +111,7 @@ This installs all required packages:
 - `PyPDF2` - For PDF processing
 - `python-dotenv` - For environment configuration
 
-#### Step 4: Verify Installation
+### Step 4: Verify Installation
 
 Check that all packages installed correctly:
 ```bash
@@ -128,71 +124,143 @@ python -c "import openai, neo4j, faiss, flask; print('All packages installed suc
 
 ### Environment Variables Setup
 
-Create a `.env` file in the project root directory with the following configuration:
-
-#### Required Settings
+Create a `.env` file in the project root:
 
 ```env
-# OpenAI API Configuration
-OPENAI_API_KEY=your_openai_api_key_here
+# API Provider (openai or xai)
+API_PROVIDER=xai
 
-# Neo4j Database Configuration
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_neo4j_password
-```
+# API Keys
+XAI_API_KEY=sk-...
+OPENAI_API_KEY=sk-...  # Required for embeddings even when using xAI
 
-#### Optional Settings
-
-```env
-# Model Configuration
-EMBEDDING_MODEL=text-embedding-3-small
-LLM_MODEL=gpt-4
+# LLM Configuration
+LLM_MODEL=grok-3  # or gpt-4
 LLM_TEMPERATURE=0.3
 LLM_MAX_TOKENS=3000
 
-# Text Processing
-CHUNK_SIZE=1000
-CHUNK_OVERLAP=200
+# Embedding Configuration
+EMBEDDING_MODEL=text-embedding-3-small
+USE_LOCAL_EMBEDDINGS=auto  # "auto", "true", or "false"
+LOCAL_EMBEDDING_MODEL=all-MiniLM-L6-v2
+
+# Neo4j Configuration
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
 
 # Search Configuration
 DEFAULT_TOP_K=10
-ADDRESSES_SIMILARITY_THRESHOLD=0.45
+GRAPH_SCORE_RESULTS=true
+GRAPH_MAX_RESULTS_FOR_RRF=150
 RRF_K=60
-```
 
-### Creating the .env File
-
-**Windows (PowerShell):**
-```powershell
-# Create .env file
-New-Item -Path .env -ItemType File
-
-# Edit with Notepad
-notepad .env
-```
-
-**Linux/Mac/WSL:**
-```bash
-# Create .env file
-touch .env
-
-# Edit with your preferred editor
-nano .env
-# or
-vim .env
-```
-
-### Verifying Configuration
-
-Test your configuration:
-```bash
-python -c "from dotenv import load_dotenv; import os; load_dotenv(); print('OpenAI Key:', 'Set' if os.getenv('OPENAI_API_KEY') else 'Missing'); print('Neo4j URI:', os.getenv('NEO4J_URI', 'Not set'))"
+# Reranking Configuration
+RERANK_TEMPERATURE=0.1
+RERANK_MAX_TOKENS=100
 ```
 
 ---
 
-## Building the System
+## xAI (Grok) Setup
+
+### Configuration
+
+1. Get your xAI API key from [x.ai](https://x.ai)
+2. Set in `.env`:
+   ```env
+   API_PROVIDER=xai
+   XAI_API_KEY=sk-...
+   XAI_LLM_MODEL=grok-3
+   ```
+
+3. **Important:** You still need `OPENAI_API_KEY` for embeddings (xAI doesn't provide embeddings yet)
+
+### Model Notes
+
+- `grok-beta` is deprecated, use `grok-3`
+- xAI uses OpenAI-compatible API, so code works seamlessly
+
+---
+
+## Local Embeddings Setup
+
+### When to Use Local Embeddings
+
+- **`USE_LOCAL_EMBEDDINGS=true`**: Always use local (no API calls)
+- **`USE_LOCAL_EMBEDDINGS=auto`**: Use local if API unavailable (default)
+- **`USE_LOCAL_EMBEDDINGS=false`**: Always use API
+
+### Installation
+
+```bash
+pip install sentence-transformers
+```
+
+### Model Selection
+
+Default: `all-MiniLM-L6-v2` (384 dimensions)
+- Fast and efficient
+- Good quality for most use cases
+- Lower memory usage
+
+Other options:
+- `all-mpnet-base-v2` (768 dimensions) - Better quality, slower
+- `paraphrase-multilingual-MiniLM-L12-v2` - Multilingual support
+
+### Regenerating Embeddings
+
+If you switch to local embeddings, you need to regenerate FAISS databases:
+
+```bash
+python backend/data_processing/vector/regenerate_with_local_embeddings.py
+```
+
+This will:
+1. Regenerate all embeddings using local model
+2. Rebuild FAISS databases with correct dimensions
+
+**Note:** Local embeddings (384-dim) are incompatible with OpenAI embeddings (1536-dim). You must rebuild FAISS databases when switching.
+
+---
+
+## Neo4j Setup
+
+### Installation
+
+1. **Desktop:** Download from [neo4j.com](https://neo4j.com/download/)
+2. **Docker:**
+   ```bash
+   docker run -d --name neo4j \
+     -p 7474:7474 -p 7687:7687 \
+     -e NEO4J_AUTH=neo4j/password \
+     neo4j:latest
+   ```
+
+### Configuration
+
+Set in `.env`:
+```env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+```
+
+### Verify Connection
+
+```python
+from backend.building_database.neo4j.neo4j_connection import Neo4jConnection
+
+conn = Neo4jConnection()
+if conn.verify_connectivity():
+    print("✅ Neo4j connected")
+else:
+    print("❌ Neo4j connection failed")
+```
+
+---
+
+## Database Building
 
 **⚠️ Important**: This step processes raw data and builds databases. It only needs to be run once (or when you add new data).
 
@@ -332,108 +400,6 @@ python backend/agentic/run_agent.py
 
 ---
 
-## Usage Guide
-
-### Web Interface Usage
-
-1. **Start the Application** (see [Running the Application](#running-the-application))
-
-2. **Open Browser**
-   - Navigate to: http://localhost:8000
-   - You should see the chat interface
-
-3. **Configure Settings** (Optional)
-   - Click the settings icon
-   - Select databases to search (Company, AIID, Standards)
-   - Adjust Top K results (1-50)
-   - Enable/disable reranking and answer generation
-   - Set similarity threshold (0.0-1.0)
-
-4. **Ask Questions**
-   - Type your question in the input box
-   - Click "Send" or press Enter
-   - View the AI-generated answer and search results
-
-5. **Review Results**
-   - Read the contextualized answer at the top
-   - Scroll down to see individual search results
-   - Each result shows similarity score and source
-
-### Command-Line Chatbot Usage
-
-**Starting the Chatbot:**
-```bash
-python backend/searching/run_chatbot.py --hybrid
-```
-
-**Available Commands:**
-- Type your question to search
-- `!help` - Show help message
-- `!databases` - List available databases
-- `!history` - Show conversation history
-- `!clear` - Clear conversation history
-- `!settings` - Change search settings
-- `!mode` - Switch between vector/hybrid search modes
-- `!quit` or `!exit` - Exit chatbot
-
-**Example Session:**
-```
-> What are the privacy policies?
-[Searching...]
-[Answer generated]
-> !databases
-Available databases: company, aiid, standards
-> !quit
-```
-
-### Agentic System Usage
-
-**Starting the Agent:**
-```bash
-python backend/agentic/run_agent.py
-```
-
-**Example Goals:**
-```
-Goal: Find compliance gaps
-[AGENT] Planning for goal: Find compliance gaps
-[AGENT] Created plan with 2 steps:
-  Step 1: Find GDPR articles not covered by company documents
-  Step 2: Generate comprehensive compliance report
-
-[AGENT] Executing plan...
-[AGENT] Step 1/2: Find GDPR articles not covered...
-✓ Step 1: Found 94 compliance gaps
-[AGENT] Step 2/2: Generate comprehensive compliance report...
-✓ Step 2: Report generated
-```
-
-### Example Queries
-
-**Compliance Analysis:**
-- "What are the mismatches between company data and GDPR data?"
-- "Find GDPR articles not covered by company documents"
-- "Which clauses address GDPR Article 5?"
-- "What compliance gaps exist?"
-
-**Privacy & Data Protection:**
-- "What are the privacy policies?"
-- "How does the company handle personal data?"
-- "What information is collected about users?"
-- "Explain data retention policies"
-
-**GDPR Requirements:**
-- "What are GDPR requirements for data processing?"
-- "What rights do data subjects have?"
-- "What are the legal bases for processing personal data?"
-
-**Incident Analysis:**
-- "Find incidents related to data breaches"
-- "What AIID incidents violate GDPR Article 5?"
-- "Show incidents that relate to privacy violations"
-
----
-
 ## Troubleshooting
 
 ### Installation Issues
@@ -464,6 +430,16 @@ Goal: Find compliance gaps
   - Test connection: `python -c "from neo4j import GraphDatabase; import os; from dotenv import load_dotenv; load_dotenv(); driver = GraphDatabase.driver(os.getenv('NEO4J_URI'), auth=(os.getenv('NEO4J_USER'), os.getenv('NEO4J_PASSWORD'))); driver.verify_connectivity(); print('Connected!')"`
   - Check URI format: Should be `bolt://localhost:7687` (not `http://`)
   - Verify username/password match your Neo4j instance
+
+**Problem: API key not found**
+- **Solution:** Check `.env` file exists and has correct keys
+
+**Problem: Dimension mismatch in FAISS**
+- **Solution:** Rebuild FAISS databases with matching embedding model
+
+**Problem: Local embeddings not working**
+- **Error:** "sentence-transformers not available"
+- **Solution:** `pip install sentence-transformers`
 
 ### Build Issues
 
@@ -546,17 +522,8 @@ If you encounter issues not covered here:
 1. **Check Logs**: Review error messages in terminal/console
 2. **Verify Setup**: Ensure all prerequisites are installed correctly
 3. **Test Components**: Test individual components (Neo4j, OpenAI API) separately
-4. **Review Documentation**: Check `docs/USAGE.md` and `docs/TECHNICAL.md`
+4. **Review Documentation**: Check [USAGE.md](USAGE.md) and [TECHNICAL.md](TECHNICAL.md)
 5. **Check Issues**: Review project issue tracker (if available)
-
----
-
-## Additional Resources
-
-- **Technical Documentation**: See `docs/TECHNICAL.md` for architecture details
-- **Usage Examples**: See `docs/USAGE.md` for sample queries and Cypher queries
-- **Agentic System**: See `docs/AGENTIC_SYSTEM.md` for agent documentation
-- **Main README**: See `README.md` for project overview
 
 ---
 
@@ -572,6 +539,7 @@ If you encounter issues not covered here:
 
 ---
 
-**Last Updated**: 2024  
-**Version**: 1.0
+## Configuration Reference
+
+See [SEARCH_ARCHITECTURE.md](SEARCH_ARCHITECTURE.md) for detailed configuration options.
 

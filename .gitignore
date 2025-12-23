@@ -81,6 +81,17 @@ neo4j/*.db
 data/processed/
 data/vector/
 
+# Regenerated local embeddings (temporary)
+backend/data_processing/processed/vector/regenerated_local/
+
+# Processed embeddings (large files, regenerate as needed)
+backend/data_processing/processed/vector/**/*.json
+!backend/data_processing/processed/vector/.gitkeep
+
+# Processed graph data (can be regenerated)
+backend/data_processing/processed/graph/**/*.json
+!backend/data_processing/processed/graph/.gitkeep
+
 # Model weights / caches
 *.ckpt
 *.pt

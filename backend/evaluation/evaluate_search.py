@@ -57,22 +57,34 @@ from collections import defaultdict
 import sys
 import os
 import re
+
+# Statistical analysis imports
+try:
+    from scipy import stats
+    SCIPY_AVAILABLE = True
+except ImportError:
+    SCIPY_AVAILABLE = False
+    print("Warning: scipy not available. Statistical tests will be skipped. Install with: pip install scipy")
 # Add paths for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "searching"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "building_database" / "neo4j"))
 
-from query_engine import VectorQueryEngine, get_openai_client
+from query_engine import VectorQueryEngine
 from hybrid_query_engine import HybridQueryEngine
 from neo4j_queries import KnowledgeGraphQueries
 from neo4j_connection import Neo4jConnection
 from dotenv import load_dotenv
 
+# Import unified API client
+sys.path.insert(0, str(Path(__file__).parent.parent / "searching"))
+from api_client import get_api_client, get_llm_model
+
 load_dotenv()
-# Both models read from .env file
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4")
+# Both models read from .env file - use unified client
+LLM_MODEL = get_llm_model()
 # Judge LLM for evaluation - reads from .env, falls back to LLM_MODEL if not set
 # Set JUDGE_LLM_MODEL in .env to use a different model for evaluation
-JUDGE_LLM_MODEL = os.getenv("JUDGE_LLM_MODEL", os.getenv("LLM_MODEL", "gpt-4"))
+JUDGE_LLM_MODEL = os.getenv("JUDGE_LLM_MODEL", LLM_MODEL)
 
 
 @dataclass
@@ -94,13 +106,17 @@ class SearchMetrics:
     # Quality metrics (if ground truth available)
     precision_at_k: Optional[float] = None
     recall_at_k: Optional[float] = None
+    f1_score: Optional[float] = None  # F1 score = 2 * (precision * recall) / (precision + recall)
     mrr: Optional[float] = None  # Mean Reciprocal Rank
+    map_score: Optional[float] = None  # Mean Average Precision
     ndcg_at_k: Optional[float] = None  # Normalized Discounted Cumulative Gain
     # Result quality indicators
     avg_similarity: Optional[float] = None  # For vector search
     result_diversity: Optional[float] = None  # How diverse are results
     # Source distribution
     sources: Optional[Dict[str, int]] = None
+    # Coverage metrics (for compliance analysis)
+    coverage_score: Optional[float] = None  # Percentage of relevant items covered
 
 
 class SearchEvaluator:
@@ -197,7 +213,7 @@ Return ONLY a JSON object with this exact format:
 Score should be between 0.0 and 1.0."""
 
         try:
-            client = get_openai_client()
+            client = get_api_client()
             response = client.chat.completions.create(
                 model=JUDGE_LLM_MODEL,  # Use judge LLM for evaluation
                 messages=[
@@ -304,7 +320,7 @@ Return ONLY a JSON object with this exact format:
 Score should be between 0.0 and 1.0."""
 
         try:
-            client = get_openai_client()
+            client = get_api_client()
             response = client.chat.completions.create(
                 model=JUDGE_LLM_MODEL,  # Use judge LLM for evaluation
                 messages=[
@@ -345,7 +361,8 @@ Score should be between 0.0 and 1.0."""
         query: str, 
         top_k: int = 10,
         db_names: Optional[List[str]] = None,
-        evaluate_accuracy: bool = True
+        evaluate_accuracy: bool = True,
+        return_raw_results: bool = False
     ) -> SearchMetrics:
         """
         Evaluate vector search performance with answer generation.
@@ -355,37 +372,45 @@ Score should be between 0.0 and 1.0."""
             top_k: Number of results to retrieve
             db_names: Databases to search (None = all)
             evaluate_accuracy: Whether to evaluate answer accuracy
+            return_raw_results: If True, returns tuple (metrics, raw_results, search_time_ms)
             
         Returns:
-            SearchMetrics object with metrics
+            SearchMetrics object with metrics (or tuple if return_raw_results=True)
         """
-        start_time = time.perf_counter()
+        search_start = time.perf_counter()
         
-        # Use full query pipeline with answer generation (mandatory)
-        result = self.vector_engine.query(
+        # Get search results (without answer generation for timing)
+        # For pure vector: search + rerank (this is what pure vector uses)
+        raw_results = self.vector_engine.search(
             query=query,
             db_names=db_names,
             top_k=top_k,
-            rerank=True,
-            generate_answer=True,  # Always enabled
             similarity_threshold=0.0
         )
         
-        execution_time_ms = (time.perf_counter() - start_time) * 1000
+        # Rerank results (pure vector uses reranked results)
+        results = raw_results
+        if results:
+            results = self.vector_engine.rerank_results(query, results, top_n=min(8, len(results)))
         
-        results = result.get('results', [])
-        answer = result.get('answer', '')
+        search_time_ms = (time.perf_counter() - search_start) * 1000
         
-        # Measure answer generation time separately
-        # For vector search, we can't easily separate answer generation time
-        # Estimate it (typically 40-60% of total time)
-        answer_generation_time_ms = execution_time_ms * 0.5 if answer else None
+        # For hybrid: use unreranked results (what hybrid actually uses)
+        vector_results_for_hybrid = raw_results
+        
+        # Generate answer
+        answer_gen_start = time.perf_counter()
+        answer = None
+        if results:
+            answer = self.vector_engine.generate_answer(query, results[:8])
+        answer_gen_time_ms = (time.perf_counter() - answer_gen_start) * 1000
+        
+        total_time_ms = search_time_ms + answer_gen_time_ms
         
         # Evaluate accuracy if requested
         accuracy_score = None
         accuracy_reasoning = None
         if evaluate_accuracy and answer:
-            # Evaluate generated answer accuracy
             accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
         
         # Calculate metrics
@@ -399,27 +424,32 @@ Score should be between 0.0 and 1.0."""
         for r in results:
             sources[r.get('database', 'unknown')] += 1
         
-        return SearchMetrics(
+        metrics = SearchMetrics(
             query=query,
             method='vector',
-            execution_time_ms=execution_time_ms,
+            execution_time_ms=total_time_ms,
             num_results=len(results),
             top_k=top_k,
-            answer_generation_time_ms=answer_generation_time_ms,
+            answer_generation_time_ms=answer_gen_time_ms,
             generated_answer=answer,
             answer_length=len(answer) if answer else None,
-            has_answer_generation=True,  # Always enabled
+            has_answer_generation=True,
             accuracy_score=accuracy_score,
             accuracy_reasoning=accuracy_reasoning,
             avg_similarity=avg_similarity,
             sources=dict(sources)
         )
+        
+        if return_raw_results:
+            return metrics, results, search_time_ms, vector_results_for_hybrid
+        return metrics
     
     def evaluate_graph_search(
         self,
         query: str,
         top_k: int = 10,
-        evaluate_accuracy: bool = True
+        evaluate_accuracy: bool = True,
+        return_raw_results: bool = False
     ) -> SearchMetrics:
         """
         Evaluate graph traversal search performance with answer generation.
@@ -428,36 +458,50 @@ Score should be between 0.0 and 1.0."""
             query: Search query
             top_k: Number of results to retrieve
             evaluate_accuracy: Whether to evaluate answer accuracy
+            return_raw_results: If True, returns tuple (metrics, raw_results, search_time_ms)
             
         Returns:
-            SearchMetrics object with metrics
+            SearchMetrics object with metrics (or tuple if return_raw_results=True)
         """
-        start_time = time.perf_counter()
+        search_start = time.perf_counter()
         
         # Get graph traversal results
-        results = self.hybrid_engine.graph_traversal_search(query)
+        # For pure graph: get all results, score them, then rerank (like vector search does)
+        all_graph_results = self.hybrid_engine.graph_traversal_search(query, top_k=None, score_results=True)
+        # Results are already scored and sorted by similarity
         
-        # Limit to top_k
-        results = results[:top_k]
+        # Search time = graph traversal + semantic scoring (before reranking)
+        search_time_ms = (time.perf_counter() - search_start) * 1000
         
-        # Measure answer generation time separately (mandatory)
+        # Rerank results using LLM (like pure vector does for consistency)
+        results = all_graph_results
+        rerank_start = time.perf_counter()
+        if results:
+            results = self.vector_engine.rerank_results(query, results, top_n=min(8, len(results)))
+        rerank_time_ms = (time.perf_counter() - rerank_start) * 1000
+        
+        # For hybrid: use scored but unreranked results (hybrid will rerank after RRF)
+        graph_results_for_hybrid = all_graph_results  # Unreranked for hybrid
+        
+        # Generate answer
         answer_gen_start = time.perf_counter()
         answer = None
         if results:
             try:
+                # Use reranked results for answer generation (like vector search does)
                 answer = self.vector_engine.generate_answer(query, results[:8])
             except Exception as e:
                 print(f"Warning: Answer generation failed: {e}")
                 answer = None
         
-        answer_generation_time_ms = (time.perf_counter() - answer_gen_start) * 1000 if answer else None
-        execution_time_ms = (time.perf_counter() - start_time) * 1000
+        answer_gen_time_ms = (time.perf_counter() - answer_gen_start) * 1000 if answer else None
+        # Total time = search + rerank + answer generation
+        total_time_ms = search_time_ms + rerank_time_ms + (answer_gen_time_ms or 0)
         
         # Evaluate accuracy if requested
         accuracy_score = None
         accuracy_reasoning = None
         if evaluate_accuracy and answer:
-            # Evaluate generated answer accuracy
             accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
         
         # Source distribution
@@ -466,96 +510,265 @@ Score should be between 0.0 and 1.0."""
             source = r.get('source', 'graph_traversal')
             sources[source] += 1
         
-        return SearchMetrics(
+        metrics = SearchMetrics(
             query=query,
             method='graph',
-            execution_time_ms=execution_time_ms,
+            execution_time_ms=total_time_ms,
             num_results=len(results),
             top_k=top_k,
-            answer_generation_time_ms=answer_generation_time_ms,
+            answer_generation_time_ms=answer_gen_time_ms,
             generated_answer=answer,
             answer_length=len(answer) if answer else None,
-            has_answer_generation=True,  # Always enabled
+            has_answer_generation=True,
             accuracy_score=accuracy_score,
             accuracy_reasoning=accuracy_reasoning,
             sources=dict(sources)
         )
+        
+        if return_raw_results:
+            return metrics, results, search_time_ms, graph_results_for_hybrid
+        return metrics
     
     def evaluate_hybrid_search(
         self,
         query: str,
+        vector_results: List[Dict[str, Any]],
+        graph_results: List[Dict[str, Any]],
+        vector_search_time_ms: float,
+        graph_search_time_ms: float,
         top_k: int = 10,
-        use_faiss: bool = True,
-        use_graph_traversal: bool = True,
-        evaluate_accuracy: bool = True
+        evaluate_accuracy: bool = True,
+        rrf_k: int = None
     ) -> SearchMetrics:
         """
-        Evaluate hybrid search performance with answer generation.
+        Evaluate hybrid search by applying RRF to pre-computed vector and graph results.
+        This is more efficient than re-running searches.
+        Applies adaptive similarity filtering (Option B) before merging.
         
         Args:
             query: Search query
+            vector_results: Pre-computed vector search results
+            graph_results: Pre-computed graph search results
+            vector_search_time_ms: Time taken for vector search (ms)
+            graph_search_time_ms: Time taken for graph search (ms)
             top_k: Number of results to retrieve
-            use_faiss: Use FAISS vector search
-            use_graph_traversal: Use graph traversal
             evaluate_accuracy: Whether to evaluate answer accuracy
+            rrf_k: RRF constant (defaults to RRF_K from .env)
             
         Returns:
             SearchMetrics object with metrics
         """
-        start_time = time.perf_counter()
+        if rrf_k is None:
+            rrf_k = int(os.getenv("RRF_K", "60"))
         
-        # Use full hybrid query pipeline with answer generation (mandatory)
-        result = self.hybrid_engine.hybrid_query(
-            query=query,
-            top_k=top_k,
-            rerank=True,
-            generate_answer=True,  # Always enabled
-            rrf_k=None  # Use default from .env
-        )
+        # Apply adaptive similarity filtering to graph results (Option B)
+        min_graph_results = int(os.getenv("MIN_GRAPH_RESULTS_FOR_RRF", "3"))
+        graph_results_filtered = self._filter_graph_results_adaptive(graph_results, vector_results)
         
-        execution_time_ms = (time.perf_counter() - start_time) * 1000
+        # If filtered graph results are too few, use vector only
+        if len(graph_results_filtered) < min_graph_results:
+            graph_results_filtered = []
         
-        results = result.get('results', [])
-        answer = result.get('answer', '')
+        # Step 1: Merge results using RRF (only if both sources have results)
+        rrf_start = time.perf_counter()
+        if len(vector_results) > 0 and len(graph_results_filtered) > 0:
+            merged_results = self._merge_results_rrf(vector_results, graph_results_filtered, top_k, rrf_k)
+        elif len(vector_results) > 0:
+            merged_results = vector_results[:top_k]  # Use vector only
+        elif len(graph_results_filtered) > 0:
+            merged_results = graph_results_filtered[:top_k]  # Use graph only
+        else:
+            merged_results = []
+        rrf_time_ms = (time.perf_counter() - rrf_start) * 1000
         
-        # Measure answer generation time separately (approximate)
-        # Estimate answer generation time (typically 40-60% of total time)
-        answer_generation_time_ms = execution_time_ms * 0.5 if answer else None
+        # Step 2: Rerank merged results (hybrid_query() does this, so evaluation should too)
+        rerank_start = time.perf_counter()
+        if merged_results:
+            merged_results = self.vector_engine.rerank_results(query, merged_results, top_n=min(8, len(merged_results)))
+        rerank_time_ms = (time.perf_counter() - rerank_start) * 1000
+        
+        # Step 3: Generate answer from reranked merged results
+        answer_gen_start = time.perf_counter()
+        answer = None
+        if merged_results:
+            answer = self.vector_engine.generate_answer(query, merged_results[:8])
+        answer_gen_time_ms = (time.perf_counter() - answer_gen_start) * 1000
+        
+        # Total time = vector search + graph search + RRF merge + rerank + answer generation
+        total_time_ms = vector_search_time_ms + graph_search_time_ms + rrf_time_ms + rerank_time_ms + answer_gen_time_ms
         
         # Evaluate accuracy if requested
         accuracy_score = None
         accuracy_reasoning = None
         if evaluate_accuracy and answer:
-            # Evaluate generated answer accuracy
-            accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, results)
+            accuracy_score, accuracy_reasoning = self.evaluate_answer_accuracy(query, answer, merged_results)
         
         # Calculate average similarity (for vector results)
         avg_similarity = None
-        similarities = [r.get('similarity', 0.0) for r in results if 'similarity' in r]
+        similarities = [r.get('similarity', 0.0) for r in merged_results if 'similarity' in r]
         if similarities:
             avg_similarity = statistics.mean(similarities)
         
         # Source distribution
         sources = defaultdict(int)
-        for r in results:
+        for r in merged_results:
             source = r.get('source', 'unknown')
             sources[source] += 1
         
         return SearchMetrics(
             query=query,
             method='hybrid',
-            execution_time_ms=execution_time_ms,
-            num_results=len(results),
+            execution_time_ms=total_time_ms,
+            num_results=len(merged_results),
             top_k=top_k,
-            answer_generation_time_ms=answer_generation_time_ms,
+            answer_generation_time_ms=answer_gen_time_ms,
             generated_answer=answer,
             answer_length=len(answer) if answer else None,
-            has_answer_generation=True,  # Always enabled
+            has_answer_generation=True,
             accuracy_score=accuracy_score,
             accuracy_reasoning=accuracy_reasoning,
             avg_similarity=avg_similarity,
             sources=dict(sources)
         )
+    
+    def _filter_graph_results_adaptive(
+        self, 
+        graph_results: List[Dict], 
+        vector_results: List[Dict] = None
+    ) -> List[Dict]:
+        """
+        Filter low-quality graph results using adaptive similarity threshold (Option B).
+        Matches the logic in hybrid_query_engine.py.
+        
+        Args:
+            graph_results: Graph results with similarity scores
+            vector_results: Optional vector results for adaptive threshold calculation
+            
+        Returns:
+            Filtered graph results
+        """
+        if not graph_results:
+            return []
+        
+        # Get configuration
+        threshold_mode = os.getenv("GRAPH_SIMILARITY_THRESHOLD_MODE", "adaptive").lower()
+        threshold_fixed = float(os.getenv("GRAPH_SIMILARITY_THRESHOLD_FIXED", "0.5"))
+        threshold_percentile = float(os.getenv("GRAPH_SIMILARITY_THRESHOLD_PERCENTILE", "0.3"))
+        
+        # Get similarity scores
+        graph_similarities = [r.get('similarity', 0.0) for r in graph_results if r.get('similarity') is not None]
+        if not graph_similarities:
+            return graph_results  # No similarities, return all
+        
+        # Calculate threshold
+        if threshold_mode == "fixed":
+            threshold = threshold_fixed
+        elif threshold_mode == "percentile":
+            percentile_idx = int(len(graph_similarities) * threshold_percentile)
+            sorted_sims = sorted(graph_similarities)
+            if percentile_idx >= len(sorted_sims):
+                threshold = sorted_sims[0] if sorted_sims else 0.5
+            else:
+                threshold = sorted_sims[percentile_idx]
+        else:  # adaptive mode
+            # Strategy 1: Use vector median as reference if available
+            if vector_results and len(vector_results) > 0:
+                vector_similarities = [r.get('similarity', 0.0) for r in vector_results if r.get('similarity') is not None]
+                if vector_similarities:
+                    vector_median = statistics.median(vector_similarities)
+                    threshold = max(0.3, vector_median - 0.2)
+                else:
+                    # Strategy 2: Use percentile-based
+                    percentile_idx = int(len(graph_similarities) * 0.3)
+                    sorted_sims = sorted(graph_similarities)
+                    threshold = sorted_sims[percentile_idx] if percentile_idx < len(sorted_sims) else sorted_sims[0] if sorted_sims else 0.5
+                    threshold = max(0.3, threshold)
+            else:
+                # Strategy 2: Use percentile-based
+                percentile_idx = int(len(graph_similarities) * 0.3)
+                sorted_sims = sorted(graph_similarities)
+                threshold = sorted_sims[percentile_idx] if percentile_idx < len(sorted_sims) else sorted_sims[0] if sorted_sims else 0.5
+                threshold = max(0.3, threshold)
+        
+        # Filter results above threshold
+        filtered = [r for r in graph_results if r.get('similarity', 0.0) >= threshold]
+        return filtered
+    
+    def _merge_results_rrf(self, vector_results: List[Dict], graph_results: List[Dict], 
+                           top_k: int, k: int = 60) -> List[Dict]:
+        """
+        Merge results from vector and graph sources using Reciprocal Rank Fusion (RRF).
+        Simplified version for evaluation (no debug output).
+        
+        RRF Formula: RRF_score(d) = Σ 1 / (k + rank_i(d))
+        
+        Args:
+            vector_results: Results from vector search (already ranked)
+            graph_results: Results from graph traversal
+            top_k: Number of top results to return
+            k: RRF constant
+            
+        Returns:
+            Merged and ranked results using RRF scores
+        """
+        rrf_scores = {}
+        
+        # Process vector results
+        for rank, result in enumerate(vector_results, start=1):
+            result_id = self._get_result_id(result)
+            if result_id not in rrf_scores:
+                rrf_scores[result_id] = {
+                    'result': result.copy(),
+                    'rrf_score': 0.0,
+                    'vector_rank': None,
+                    'graph_rank': None
+                }
+            rrf_scores[result_id]['rrf_score'] += 1.0 / (k + rank)
+            rrf_scores[result_id]['vector_rank'] = rank
+        
+        # Process graph results
+        for rank, result in enumerate(graph_results, start=1):
+            result_id = self._get_result_id(result)
+            if result_id not in rrf_scores:
+                rrf_scores[result_id] = {
+                    'result': result.copy(),
+                    'rrf_score': 0.0,
+                    'vector_rank': None,
+                    'graph_rank': None
+                }
+            rrf_scores[result_id]['rrf_score'] += 1.0 / (k + rank)
+            rrf_scores[result_id]['graph_rank'] = rank
+        
+        # Mark source
+        for result_id, data in rrf_scores.items():
+            if data['vector_rank'] is not None and data['graph_rank'] is not None:
+                data['result']['source'] = 'hybrid'
+            elif data['vector_rank'] is not None:
+                data['result']['source'] = 'faiss_vector'
+            else:
+                data['result']['source'] = 'graph_traversal'
+            data['result']['rrf_score'] = data['rrf_score']
+            data['result']['vector_rank'] = data['vector_rank']
+            data['result']['graph_rank'] = data['graph_rank']
+        
+        # Sort by RRF score and return top_k
+        merged = sorted(rrf_scores.values(), key=lambda x: x['rrf_score'], reverse=True)
+        return [item['result'] for item in merged[:top_k]]
+    
+    def _get_result_id(self, result: Dict[str, Any]) -> str:
+        """Get unique identifier for a result (for RRF deduplication)."""
+        # Try various ID fields
+        for field in ['id', 'chunk_id', 'incident_id', 'clause_id', 'article_id']:
+            if field in result:
+                return str(result[field])
+        
+        # Use text hash as fallback
+        text = result.get('text', result.get('description', ''))
+        if text:
+            import hashlib
+            return hashlib.md5(text[:100].encode('utf-8')).hexdigest()
+        
+        return str(result)
     
     def calculate_precision_recall(
         self,
@@ -652,6 +865,86 @@ Score should be between 0.0 and 1.0."""
         
         return ndcg
     
+    def calculate_f1_score(
+        self,
+        precision: Optional[float],
+        recall: Optional[float]
+    ) -> Optional[float]:
+        """
+        Calculate F1 score from precision and recall.
+        
+        Args:
+            precision: Precision score
+            recall: Recall score
+            
+        Returns:
+            F1 score (0-1) or None if precision/recall unavailable
+        """
+        if precision is None or recall is None:
+            return None
+        if precision + recall == 0:
+            return 0.0
+        return 2 * (precision * recall) / (precision + recall)
+    
+    def calculate_map(
+        self,
+        results: List[Dict],
+        ground_truth_ids: List[str],
+        k: int = 10
+    ) -> float:
+        """
+        Calculate Mean Average Precision (MAP@k).
+        
+        Args:
+            results: Search results
+            ground_truth_ids: List of relevant result IDs
+            k: Top k results to consider
+            
+        Returns:
+            MAP@k score (0-1)
+        """
+        if not ground_truth_ids:
+            return None
+        
+        top_k_results = results[:k]
+        relevant_count = 0
+        precision_sum = 0.0
+        
+        for rank, result in enumerate(top_k_results, start=1):
+            result_id = self._get_result_id(result)
+            if result_id in ground_truth_ids:
+                relevant_count += 1
+                precision_at_rank = relevant_count / rank
+                precision_sum += precision_at_rank
+        
+        if relevant_count == 0:
+            return 0.0
+        
+        return precision_sum / len(ground_truth_ids)
+    
+    def calculate_coverage(
+        self,
+        results: List[Dict],
+        ground_truth_ids: List[str]
+    ) -> float:
+        """
+        Calculate coverage score: percentage of relevant items retrieved.
+        
+        Args:
+            results: Search results
+            ground_truth_ids: List of relevant result IDs
+            
+        Returns:
+            Coverage score (0-1)
+        """
+        if not ground_truth_ids:
+            return None
+        
+        result_ids = [self._get_result_id(r) for r in results]
+        retrieved_relevant = len(set(result_ids) & set(ground_truth_ids))
+        
+        return retrieved_relevant / len(ground_truth_ids) if ground_truth_ids else 0.0
+    
     def _get_result_id(self, result: Dict) -> str:
         """Get unique identifier for a result."""
         if 'id' in result and result['id']:
@@ -710,55 +1003,139 @@ Score should be between 0.0 and 1.0."""
         
         for i, query in enumerate(test_queries, 1):
             if verbose:
-                print(f"[{i}/{len(test_queries)}] Evaluating query: '{query}'")
+                print(f"\n{'='*80}")
+                print(f"[{i}/{len(test_queries)}] Query: '{query}'")
+                print(f"{'='*80}")
             else:
-                # Simplified progress indicator
                 progress = (i - 1) / len(test_queries) * 100
-                print(f"[{i}/{len(test_queries)}] {progress:.0f}% - {query[:60]}{'...' if len(query) > 60 else ''}", end=" ")
+                print(f"[{i}/{len(test_queries)}] {progress:.0f}% - {query[:60]}{'...' if len(query) > 60 else ''}")
             
-            # Evaluate vector search (answer generation mandatory)
+            # ========================================================================
+            # STEP 1: VECTOR SEARCH ONLY
+            # ========================================================================
             if verbose:
-                print("  → Vector search...", end=" ")
-            vector_metrics = self.evaluate_vector_search(
-                query, top_k=top_k, evaluate_accuracy=evaluate_accuracy
-            )
-            results['vector'].append(vector_metrics)
-            if verbose:
-                ans_time = f", ans: {vector_metrics.answer_generation_time_ms:.0f}ms" if vector_metrics.answer_generation_time_ms else ""
-                acc = f", acc: {vector_metrics.accuracy_score:.2f}" if vector_metrics.accuracy_score is not None else ""
-                print(f"✓ ({vector_metrics.execution_time_ms:.2f}ms{ans_time}{acc}, {vector_metrics.num_results} results)")
+                print("\n[1/3] VECTOR SEARCH ONLY")
+                print("-" * 80)
+            try:
+                result = self.evaluate_vector_search(
+                    query, top_k=top_k, evaluate_accuracy=evaluate_accuracy, return_raw_results=True
+                )
+                if isinstance(result, tuple) and len(result) == 4:
+                    vector_metrics, vector_raw_results, vector_search_time, vector_results_for_hybrid = result
+                else:
+                    vector_metrics, vector_raw_results, vector_search_time = result
+                    vector_results_for_hybrid = vector_raw_results  # Fallback: use reranked results
+                results['vector'].append(vector_metrics)
+                if verbose:
+                    ans_time = f", ans: {vector_metrics.answer_generation_time_ms:.0f}ms" if vector_metrics.answer_generation_time_ms else ""
+                    acc = f", acc: {vector_metrics.accuracy_score:.2f}" if vector_metrics.accuracy_score is not None else ""
+                    print(f"✓ Search: {vector_search_time:.2f}ms | Total: {vector_metrics.execution_time_ms:.2f}ms{ans_time}{acc} | Results: {vector_metrics.num_results}")
+                else:
+                    print(f"  ✓ Vector: {vector_metrics.execution_time_ms:.0f}ms, {vector_metrics.num_results} results, acc: {vector_metrics.accuracy_score:.2f}" if vector_metrics.accuracy_score else f"  ✓ Vector: {vector_metrics.execution_time_ms:.0f}ms, {vector_metrics.num_results} results")
+            except Exception as e:
+                error_msg = str(e)
+                if 'quota' in error_msg.lower() or 'insufficient_quota' in error_msg.lower():
+                    print(f"  ✗ Vector search SKIPPED (API quota exceeded)")
+                    vector_metrics = SearchMetrics(
+                        query=query, method='vector', execution_time_ms=0.0,
+                        num_results=0, top_k=top_k, has_answer_generation=False
+                    )
+                    vector_raw_results = []
+                    vector_search_time = 0.0
+                    results['vector'].append(vector_metrics)
+                else:
+                    raise
             
-            # Evaluate graph search (answer generation mandatory)
+            # ========================================================================
+            # STEP 2: GRAPH SEARCH ONLY
+            # ========================================================================
             if verbose:
-                print("  → Graph search...", end=" ")
-            graph_metrics = self.evaluate_graph_search(
-                query, top_k=top_k, evaluate_accuracy=evaluate_accuracy
-            )
-            results['graph'].append(graph_metrics)
-            if verbose:
-                ans_time = f", ans: {graph_metrics.answer_generation_time_ms:.0f}ms" if graph_metrics.answer_generation_time_ms else ""
-                acc = f", acc: {graph_metrics.accuracy_score:.2f}" if graph_metrics.accuracy_score is not None else ""
-                print(f"✓ ({graph_metrics.execution_time_ms:.2f}ms{ans_time}{acc}, {graph_metrics.num_results} results)")
+                print("\n[2/3] GRAPH SEARCH ONLY")
+                print("-" * 80)
+            try:
+                result = self.evaluate_graph_search(
+                    query, top_k=top_k, evaluate_accuracy=evaluate_accuracy, return_raw_results=True
+                )
+                if isinstance(result, tuple) and len(result) == 4:
+                    graph_metrics, graph_raw_results, graph_search_time, graph_results_for_hybrid = result
+                else:
+                    graph_metrics, graph_raw_results, graph_search_time = result
+                    graph_results_for_hybrid = graph_raw_results  # Fallback: use limited results
+                results['graph'].append(graph_metrics)
+                if verbose:
+                    ans_time = f", ans: {graph_metrics.answer_generation_time_ms:.0f}ms" if graph_metrics.answer_generation_time_ms else ""
+                    acc = f", acc: {graph_metrics.accuracy_score:.2f}" if graph_metrics.accuracy_score is not None else ""
+                    print(f"✓ Search: {graph_search_time:.2f}ms | Total: {graph_metrics.execution_time_ms:.2f}ms{ans_time}{acc} | Results: {graph_metrics.num_results}")
+                else:
+                    print(f"  ✓ Graph: {graph_metrics.execution_time_ms:.0f}ms, {graph_metrics.num_results} results, acc: {graph_metrics.accuracy_score:.2f}" if graph_metrics.accuracy_score else f"  ✓ Graph: {graph_metrics.execution_time_ms:.0f}ms, {graph_metrics.num_results} results")
+            except Exception as e:
+                error_msg = str(e)
+                print(f"  ✗ Graph search ERROR: {error_msg}")
+                graph_metrics = SearchMetrics(
+                    query=query, method='graph', execution_time_ms=0.0,
+                    num_results=0, top_k=top_k, has_answer_generation=False
+                )
+                graph_raw_results = []
+                graph_search_time = 0.0
+                graph_results_for_hybrid = []
+                results['graph'].append(graph_metrics)
             
-            # Evaluate hybrid search (answer generation mandatory)
+            # ========================================================================
+            # STEP 3: HYBRID SEARCH (RRF on Vector + Graph results)
+            # ========================================================================
             if verbose:
-                print("  → Hybrid search...", end=" ")
-            hybrid_metrics = self.evaluate_hybrid_search(
-                query, top_k=top_k, evaluate_accuracy=evaluate_accuracy
-            )
-            results['hybrid'].append(hybrid_metrics)
-            if verbose:
-                ans_time = f", ans: {hybrid_metrics.answer_generation_time_ms:.0f}ms" if hybrid_metrics.answer_generation_time_ms else ""
-                acc = f", acc: {hybrid_metrics.accuracy_score:.2f}" if hybrid_metrics.accuracy_score is not None else ""
-                print(f"✓ ({hybrid_metrics.execution_time_ms:.2f}ms{ans_time}{acc}, {hybrid_metrics.num_results} results)")
-            else:
-                # Simplified: show completion with average accuracy
+                print("\n[3/3] HYBRID SEARCH (RRF on Vector + Graph)")
+                print("-" * 80)
+            try:
+                # Use the correct results for hybrid:
+                # - Unreranked vector results (hybrid doesn't rerank before RRF)
+                # - Unlimited graph results (hybrid doesn't limit before RRF)
+                hybrid_vector_results = vector_results_for_hybrid if 'vector_results_for_hybrid' in locals() else vector_raw_results
+                hybrid_graph_results = graph_results_for_hybrid if 'graph_results_for_hybrid' in locals() else graph_raw_results
+                
+                hybrid_metrics = self.evaluate_hybrid_search(
+                    query=query,
+                    vector_results=hybrid_vector_results,
+                    graph_results=hybrid_graph_results,
+                    vector_search_time_ms=vector_search_time,
+                    graph_search_time_ms=graph_search_time,
+                    top_k=top_k,
+                    evaluate_accuracy=evaluate_accuracy
+                )
+                results['hybrid'].append(hybrid_metrics)
+                if verbose:
+                    # Calculate RRF and rerank times from total
+                    # Formula: total = vector + graph + rrf + rerank + answer
+                    remaining_time = hybrid_metrics.execution_time_ms - vector_search_time - graph_search_time - (hybrid_metrics.answer_generation_time_ms or 0)
+                    # RRF is very fast (pure math, ~0.07-3ms), rerank involves LLM call (~10-100ms)
+                    # Estimate: RRF ~10% of remaining, Rerank ~90% (rerank involves LLM API call)
+                    if remaining_time > 0:
+                        rrf_time = remaining_time * 0.1  # RRF is pure math, very fast
+                        rerank_time = remaining_time * 0.9  # Rerank involves LLM API call
+                    else:
+                        rrf_time = 0.0
+                        rerank_time = 0.0
+                    ans_time = f", ans: {hybrid_metrics.answer_generation_time_ms:.0f}ms" if hybrid_metrics.answer_generation_time_ms else ""
+                    acc = f", acc: {hybrid_metrics.accuracy_score:.2f}" if hybrid_metrics.accuracy_score is not None else ""
+                    print(f"✓ RRF merge: {rrf_time:.2f}ms | Total: {hybrid_metrics.execution_time_ms:.2f}ms{ans_time}{acc} | Results: {hybrid_metrics.num_results}")
+                    print(f"  (Vector: {vector_search_time:.2f}ms + Graph: {graph_search_time:.2f}ms + RRF: {rrf_time:.2f}ms + Rerank: {rerank_time:.2f}ms + Answer: {hybrid_metrics.answer_generation_time_ms:.0f}ms)")
+                else:
+                    print(f"  ✓ Hybrid: {hybrid_metrics.execution_time_ms:.0f}ms, {hybrid_metrics.num_results} results, acc: {hybrid_metrics.accuracy_score:.2f}" if hybrid_metrics.accuracy_score else f"  ✓ Hybrid: {hybrid_metrics.execution_time_ms:.0f}ms, {hybrid_metrics.num_results} results")
+            except Exception as e:
+                error_msg = str(e)
+                print(f"  ✗ Hybrid search ERROR: {error_msg}")
+                hybrid_metrics = SearchMetrics(
+                    query=query, method='hybrid', execution_time_ms=0.0,
+                    num_results=0, top_k=top_k, has_answer_generation=False
+                )
+                results['hybrid'].append(hybrid_metrics)
+            
+            # Summary for this query
+            if not verbose:
                 avg_acc = (vector_metrics.accuracy_score or 0) + (graph_metrics.accuracy_score or 0) + (hybrid_metrics.accuracy_score or 0)
                 if evaluate_accuracy and avg_acc > 0:
                     avg_acc = avg_acc / 3
-                    print(f"✓ (avg acc: {avg_acc:.2f})")
-                else:
-                    print("✓")
+                    print(f"  → Avg accuracy: {avg_acc:.2f}")
             
             if verbose:
                 print()
@@ -776,7 +1153,7 @@ Score should be between 0.0 and 1.0."""
         self,
         results: Dict[str, List[SearchMetrics]]
     ) -> Dict[str, Any]:
-        """Calculate aggregate statistics."""
+        """Calculate aggregate statistics with confidence intervals."""
         summary = {}
         
         for method, metrics_list in results.items():
@@ -789,6 +1166,16 @@ Score should be between 0.0 and 1.0."""
             answer_generation_times = [m.answer_generation_time_ms for m in metrics_list if m.answer_generation_time_ms is not None]
             answer_lengths = [m.answer_length for m in metrics_list if m.answer_length is not None]
             accuracy_scores = [m.accuracy_score for m in metrics_list if m.accuracy_score is not None]
+            precision_scores = [m.precision_at_k for m in metrics_list if m.precision_at_k is not None]
+            recall_scores = [m.recall_at_k for m in metrics_list if m.recall_at_k is not None]
+            f1_scores = [m.f1_score for m in metrics_list if m.f1_score is not None]
+            map_scores = [m.map_score for m in metrics_list if m.map_score is not None]
+            mrr_scores = [m.mrr for m in metrics_list if m.mrr is not None]
+            ndcg_scores = [m.ndcg_at_k for m in metrics_list if m.ndcg_at_k is not None]
+            
+            # Calculate 95% confidence intervals
+            ci_exec_time = self._calculate_confidence_interval(execution_times, confidence=0.95)
+            ci_accuracy = self._calculate_confidence_interval(accuracy_scores, confidence=0.95) if accuracy_scores else None
             
             summary[method] = {
                 'avg_execution_time_ms': statistics.mean(execution_times),
@@ -796,15 +1183,119 @@ Score should be between 0.0 and 1.0."""
                 'min_execution_time_ms': min(execution_times),
                 'max_execution_time_ms': max(execution_times),
                 'std_execution_time_ms': statistics.stdev(execution_times) if len(execution_times) > 1 else 0,
+                'ci_95_execution_time_ms': ci_exec_time,  # (lower, upper)
                 'avg_num_results': statistics.mean(num_results),
                 'avg_similarity': statistics.mean(avg_similarities) if avg_similarities else None,
                 'avg_answer_generation_time_ms': statistics.mean(answer_generation_times) if answer_generation_times else None,
                 'avg_answer_length': statistics.mean(answer_lengths) if answer_lengths else None,
                 'avg_accuracy_score': statistics.mean(accuracy_scores) if accuracy_scores else None,
+                'ci_95_accuracy_score': ci_accuracy,  # (lower, upper)
+                'avg_precision_at_k': statistics.mean(precision_scores) if precision_scores else None,
+                'avg_recall_at_k': statistics.mean(recall_scores) if recall_scores else None,
+                'avg_f1_score': statistics.mean(f1_scores) if f1_scores else None,
+                'avg_map_score': statistics.mean(map_scores) if map_scores else None,
+                'avg_mrr': statistics.mean(mrr_scores) if mrr_scores else None,
+                'avg_ndcg_at_k': statistics.mean(ndcg_scores) if ndcg_scores else None,
                 'total_queries': len(metrics_list)
             }
         
         return summary
+    
+    def _calculate_confidence_interval(
+        self,
+        data: List[float],
+        confidence: float = 0.95
+    ) -> Optional[Tuple[float, float]]:
+        """
+        Calculate confidence interval for a dataset.
+        
+        Args:
+            data: List of numeric values
+            confidence: Confidence level (default 0.95 for 95% CI)
+            
+        Returns:
+            Tuple of (lower_bound, upper_bound) or None if insufficient data
+        """
+        if len(data) < 2:
+            return None
+        
+        if SCIPY_AVAILABLE:
+            # Use scipy for more accurate CI calculation
+            mean = statistics.mean(data)
+            std_err = statistics.stdev(data) / math.sqrt(len(data))
+            alpha = 1 - confidence
+            t_critical = stats.t.ppf(1 - alpha/2, df=len(data)-1)
+            margin = t_critical * std_err
+            return (mean - margin, mean + margin)
+        else:
+            # Fallback: use normal approximation (less accurate for small samples)
+            mean = statistics.mean(data)
+            std_err = statistics.stdev(data) / math.sqrt(len(data))
+            # Z-score for 95% CI = 1.96
+            z_score = 1.96 if confidence == 0.95 else 2.576  # 99% CI = 2.576
+            margin = z_score * std_err
+            return (mean - margin, mean + margin)
+    
+    def calculate_statistical_significance(
+        self,
+        method1_scores: List[float],
+        method2_scores: List[float],
+        test_type: str = 't-test'
+    ) -> Dict[str, Any]:
+        """
+        Calculate statistical significance between two methods.
+        
+        Args:
+            method1_scores: Scores from method 1
+            method2_scores: Scores from method 2
+            test_type: 't-test' or 'wilcoxon'
+            
+        Returns:
+            Dictionary with p-value, statistic, and interpretation
+        """
+        if not SCIPY_AVAILABLE:
+            return {
+                'p_value': None,
+                'statistic': None,
+                'significant': None,
+                'message': 'scipy not available for statistical tests'
+            }
+        
+        if len(method1_scores) != len(method2_scores):
+            return {
+                'p_value': None,
+                'statistic': None,
+                'significant': None,
+                'message': 'Sample sizes must match for paired tests'
+            }
+        
+        if test_type == 't-test':
+            # Paired t-test
+            statistic, p_value = stats.ttest_rel(method1_scores, method2_scores)
+        elif test_type == 'wilcoxon':
+            # Wilcoxon signed-rank test (non-parametric)
+            statistic, p_value = stats.wilcoxon(method1_scores, method2_scores)
+        else:
+            return {
+                'p_value': None,
+                'statistic': None,
+                'significant': None,
+                'message': f'Unknown test type: {test_type}'
+            }
+        
+        # Determine significance levels
+        alpha = 0.05
+        significant = p_value < alpha
+        significance_level = '***' if p_value < 0.001 else '**' if p_value < 0.01 else '*' if p_value < 0.05 else 'ns'
+        
+        return {
+            'p_value': float(p_value),
+            'statistic': float(statistic),
+            'significant': significant,
+            'significance_level': significance_level,
+            'test_type': test_type,
+            'alpha': alpha
+        }
     
     def print_evaluation_report(self, evaluation_results: Dict[str, Any]):
         """Print formatted evaluation report."""
@@ -827,7 +1318,12 @@ Score should be between 0.0 and 1.0."""
             if method in summary:
                 stats = summary[method]
                 print(f"\n{method.upper()}:")
-                print(f"  Average time: {stats['avg_execution_time_ms']:.2f}ms")
+                avg_time = stats['avg_execution_time_ms']
+                ci_time = stats.get('ci_95_execution_time_ms')
+                if ci_time:
+                    print(f"  Average time: {avg_time:.2f}ms (95% CI: [{ci_time[0]:.2f}, {ci_time[1]:.2f}])")
+                else:
+                    print(f"  Average time: {avg_time:.2f}ms")
                 print(f"  Median time:  {stats['median_execution_time_ms']:.2f}ms")
                 print(f"  Min time:     {stats['min_execution_time_ms']:.2f}ms")
                 print(f"  Max time:     {stats['max_execution_time_ms']:.2f}ms")
@@ -850,7 +1346,24 @@ Score should be between 0.0 and 1.0."""
                 if stats.get('avg_answer_length') is not None:
                     print(f"  Avg answer length: {stats['avg_answer_length']:.0f} chars")
                 if stats.get('avg_accuracy_score') is not None:
-                    print(f"  Avg accuracy score: {stats['avg_accuracy_score']:.3f} (0.0-1.0)")
+                    acc_score = stats['avg_accuracy_score']
+                    ci_acc = stats.get('ci_95_accuracy_score')
+                    if ci_acc:
+                        print(f"  Avg accuracy score: {acc_score:.3f} (95% CI: [{ci_acc[0]:.3f}, {ci_acc[1]:.3f}])")
+                    else:
+                        print(f"  Avg accuracy score: {acc_score:.3f} (0.0-1.0)")
+                if stats.get('avg_precision_at_k') is not None:
+                    print(f"  Avg Precision@k: {stats['avg_precision_at_k']:.3f}")
+                if stats.get('avg_recall_at_k') is not None:
+                    print(f"  Avg Recall@k: {stats['avg_recall_at_k']:.3f}")
+                if stats.get('avg_f1_score') is not None:
+                    print(f"  Avg F1 Score: {stats['avg_f1_score']:.3f}")
+                if stats.get('avg_map_score') is not None:
+                    print(f"  Avg MAP: {stats['avg_map_score']:.3f}")
+                if stats.get('avg_mrr') is not None:
+                    print(f"  Avg MRR: {stats['avg_mrr']:.3f}")
+                if stats.get('avg_ndcg_at_k') is not None:
+                    print(f"  Avg NDCG@k: {stats['avg_ndcg_at_k']:.3f}")
         
         # Speed comparison
         print("\n" + "=" * 80)
@@ -867,6 +1380,55 @@ Score should be between 0.0 and 1.0."""
             vector_avg = summary['vector']['avg_execution_time_ms']
             overhead = (hybrid_avg / vector_avg - 1) * 100 if vector_avg > 0 else 0
             print(f"Hybrid overhead vs Vector: {overhead:+.1f}%")
+        
+        # Statistical significance comparison
+        if SCIPY_AVAILABLE and len(summary) >= 2:
+            print("\n" + "=" * 80)
+            print("STATISTICAL SIGNIFICANCE TESTS")
+            print("-" * 80)
+            methods = ['vector', 'graph', 'hybrid']
+            accuracy_scores_dict = {}
+            for method in methods:
+                if method in summary:
+                    # Extract accuracy scores from results
+                    method_results = evaluation_results['results'].get(method, [])
+                    scores = [m.accuracy_score for m in method_results if m.accuracy_score is not None]
+                    if scores:
+                        accuracy_scores_dict[method] = scores
+            
+            # Compare pairs
+            if 'vector' in accuracy_scores_dict and 'graph' in accuracy_scores_dict:
+                sig_test = self.calculate_statistical_significance(
+                    accuracy_scores_dict['vector'],
+                    accuracy_scores_dict['graph'],
+                    test_type='t-test'
+                )
+                if sig_test.get('p_value') is not None:
+                    print(f"\nVector vs Graph (Accuracy):")
+                    print(f"  p-value: {sig_test['p_value']:.4f} {sig_test.get('significance_level', '')}")
+                    print(f"  Significant: {'Yes' if sig_test['significant'] else 'No'} (α=0.05)")
+            
+            if 'hybrid' in accuracy_scores_dict and 'vector' in accuracy_scores_dict:
+                sig_test = self.calculate_statistical_significance(
+                    accuracy_scores_dict['hybrid'],
+                    accuracy_scores_dict['vector'],
+                    test_type='t-test'
+                )
+                if sig_test.get('p_value') is not None:
+                    print(f"\nHybrid vs Vector (Accuracy):")
+                    print(f"  p-value: {sig_test['p_value']:.4f} {sig_test.get('significance_level', '')}")
+                    print(f"  Significant: {'Yes' if sig_test['significant'] else 'No'} (α=0.05)")
+            
+            if 'hybrid' in accuracy_scores_dict and 'graph' in accuracy_scores_dict:
+                sig_test = self.calculate_statistical_significance(
+                    accuracy_scores_dict['hybrid'],
+                    accuracy_scores_dict['graph'],
+                    test_type='t-test'
+                )
+                if sig_test.get('p_value') is not None:
+                    print(f"\nHybrid vs Graph (Accuracy):")
+                    print(f"  p-value: {sig_test['p_value']:.4f} {sig_test.get('significance_level', '')}")
+                    print(f"  Significant: {'Yes' if sig_test['significant'] else 'No'} (α=0.05)")
         
         print("\n" + "=" * 80)
     

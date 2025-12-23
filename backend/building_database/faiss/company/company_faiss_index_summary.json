@@ -1,12 +1,6 @@
 {
   "num_vectors": 112,
-  "dimension": 1536,
-  "index_type": "IndexFlatIP",
-  "distance_metric": "Inner Product (Cosine Similarity)",
-  "source_files": [
-    "Meta Cookies Policy_embeddings.json",
-    "Meta Privacy Policy_embeddings.json",
-    "Meta Terms of Service_embeddings.json"
-  ],
-  "num_source_files": 3
+  "dimension": 384,
+  "index_type": "IndexFlatL2",
+  "distance_metric": "L2"
 }

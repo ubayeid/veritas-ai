@@ -12,31 +12,57 @@ from typing import List, Dict, Tuple, Any, Optional
 import numpy as np
 import faiss
 from openai import OpenAI
+from openai import RateLimitError, APIError
 from dotenv import load_dotenv
 import re
+
+# Import unified API client (handle both relative and absolute imports)
+try:
+    from .api_client import (
+        get_api_client,
+        get_openai_client,  # Backward compatibility
+        get_llm_model,
+        get_embedding_model,
+        get_embedding_client,
+        LLM_MODEL,
+        LLM_TEMPERATURE,
+        LLM_MAX_TOKENS,
+        RERANK_TEMPERATURE,
+        RERANK_MAX_TOKENS,
+        API_PROVIDER
+    )
+    from .local_embeddings import (
+        generate_local_embedding,
+        is_local_embeddings_enabled,
+        LOCAL_EMBEDDING_MODEL
+    )
+except ImportError:
+    # Fallback for absolute imports when used as a module
+    from api_client import (
+        get_api_client,
+        get_openai_client,
+        get_llm_model,
+        get_embedding_model,
+        get_embedding_client,
+        LLM_MODEL,
+        LLM_TEMPERATURE,
+        LLM_MAX_TOKENS,
+        RERANK_TEMPERATURE,
+        RERANK_MAX_TOKENS,
+        API_PROVIDER
+    )
+    from local_embeddings import (
+        generate_local_embedding,
+        is_local_embeddings_enabled,
+        LOCAL_EMBEDDING_MODEL
+    )
 
 # Load environment variables
 load_dotenv()
 
-# Configuration from environment variables
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4")
-LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
-LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "3000"))
-RERANK_TEMPERATURE = float(os.getenv("RERANK_TEMPERATURE", "0.1"))
-RERANK_MAX_TOKENS = int(os.getenv("RERANK_MAX_TOKENS", "100"))
-
-
-def get_openai_client():
-    """Get OpenAI client instance."""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY not found in .env file")
-    try:
-        return OpenAI(api_key=api_key)
-    except TypeError:
-        os.environ["OPENAI_API_KEY"] = api_key
-        return OpenAI()
+# Use models from api_client (supports both OpenAI and xAI)
+EMBEDDING_MODEL = get_embedding_model()
+LLM_MODEL = get_llm_model()
 
 
 def load_faiss_database(db_dir: str, index_name: str) -> Tuple[faiss.Index, List[Dict], Dict]:
@@ -75,33 +101,104 @@ def load_faiss_database(db_dir: str, index_name: str) -> Tuple[faiss.Index, List
     return index, metadata, summary
 
 
-def get_query_embedding(query: str, model: str = EMBEDDING_MODEL) -> np.ndarray:
+def get_query_embedding(query: str, model: Optional[str] = None) -> np.ndarray:
     """
     Get embedding for a query string.
+    Falls back to local CPU-based embeddings if API is unavailable.
     
     Args:
         query: Query text
-        model: Embedding model to use
+        model: Embedding model to use (if None, uses configured model)
         
     Returns:
         Query embedding as numpy array
+        
+    Raises:
+        Exception: If embedding generation fails and no fallback is available
     """
-    client = get_openai_client()
+    if model is None:
+        model = EMBEDDING_MODEL
     
-    try:
-        response = client.embeddings.create(
-            model=model,
-            input=[query]
+    # Check if we should use local embeddings
+    use_local = is_local_embeddings_enabled()
+    
+    # If USE_LOCAL_EMBEDDINGS=true, always use local (don't try API)
+    if use_local and os.getenv("USE_LOCAL_EMBEDDINGS", "auto").lower() == "true":
+        print(f"Using local CPU-based embeddings ({LOCAL_EMBEDDING_MODEL})...")
+        local_embedding = generate_local_embedding(query)
+        if local_embedding is not None:
+            return local_embedding
+        raise Exception(
+            f"Failed to generate embeddings. Local embeddings unavailable. "
+            f"Install sentence-transformers: pip install sentence-transformers"
         )
-        embedding = np.array(response.data[0].embedding, dtype='float32')
+    
+    # Try API-based embeddings first (unless local embeddings are forced)
+    if not use_local:
+        client = get_embedding_client()  # Uses appropriate client (OpenAI for embeddings even with xAI)
         
-        # Normalize for cosine similarity (if using IndexFlatIP)
-        embedding = embedding.reshape(1, -1)
-        faiss.normalize_L2(embedding)
-        
-        return embedding
-    except Exception as e:
-        raise Exception(f"Error generating query embedding: {str(e)}")
+        try:
+            response = client.embeddings.create(
+                model=model,
+                input=[query]
+            )
+            embedding = np.array(response.data[0].embedding, dtype='float32')
+            
+            # Normalize for cosine similarity (if using IndexFlatIP)
+            embedding = embedding.reshape(1, -1)
+            faiss.normalize_L2(embedding)
+            
+            return embedding
+        except RateLimitError as e:
+            error_msg = str(e)
+            # Fallback to local embeddings if quota exceeded
+            if 'quota' in error_msg.lower() or 'insufficient_quota' in error_msg.lower():
+                print(f"OpenAI API quota exceeded. Falling back to local CPU-based embeddings ({LOCAL_EMBEDDING_MODEL})...")
+                local_embedding = generate_local_embedding(query)
+                if local_embedding is not None:
+                    return local_embedding
+                raise Exception(
+                    "OpenAI API quota exceeded and local embeddings unavailable. "
+                    "Please check your billing at https://platform.openai.com/account/billing "
+                    "or install sentence-transformers: pip install sentence-transformers"
+                ) from e
+            else:
+                # Try local fallback for rate limits too
+                print(f"OpenAI API rate limit exceeded. Falling back to local CPU-based embeddings ({LOCAL_EMBEDDING_MODEL})...")
+                local_embedding = generate_local_embedding(query)
+                if local_embedding is not None:
+                    return local_embedding
+                raise Exception(
+                    f"OpenAI API rate limit exceeded. Please wait a moment and try again. "
+                    f"Error: {error_msg}"
+                ) from e
+        except APIError as e:
+            # Try local fallback for API errors
+            print(f"OpenAI API error. Falling back to local CPU-based embeddings ({LOCAL_EMBEDDING_MODEL})...")
+            local_embedding = generate_local_embedding(query)
+            if local_embedding is not None:
+                return local_embedding
+            raise Exception(f"OpenAI API error: {str(e)}") from e
+        except Exception as e:
+            # Try local fallback for any other errors
+            error_msg = str(e)
+            if 'api_key' in error_msg.lower() or 'authentication' in error_msg.lower():
+                print(f"OpenAI API key issue. Falling back to local CPU-based embeddings ({LOCAL_EMBEDDING_MODEL})...")
+                local_embedding = generate_local_embedding(query)
+                if local_embedding is not None:
+                    return local_embedding
+            raise Exception(f"Error generating query embedding: {str(e)}") from e
+    
+    # Use local embeddings directly
+    print(f"Using local CPU-based embeddings ({LOCAL_EMBEDDING_MODEL})...")
+    local_embedding = generate_local_embedding(query)
+    if local_embedding is not None:
+        return local_embedding
+    
+    raise Exception(
+        f"Failed to generate embeddings. Local embeddings unavailable. "
+        f"Install sentence-transformers: pip install sentence-transformers"
+    )
 
 
 class VectorQueryEngine:
@@ -147,7 +244,8 @@ class VectorQueryEngine:
             }
         }
         
-        self.client = get_openai_client()
+        # Initialize API client (supports both OpenAI and xAI)
+        self.client = get_api_client()
     
     def load_database(self, db_name: str):
         """
@@ -199,8 +297,10 @@ class VectorQueryEngine:
         try:
             query_embedding = get_query_embedding(query)
         except Exception as e:
-            print(f"Error generating query embedding: {str(e)}")
-            raise Exception(f"Failed to generate query embedding: {str(e)}")
+            error_msg = str(e)
+            print(f"Error generating query embedding: {error_msg}")
+            # Re-raise with the improved error message
+            raise Exception(f"Failed to generate query embedding: {error_msg}") from e
         
         all_results = []
         

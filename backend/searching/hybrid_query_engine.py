@@ -6,7 +6,8 @@ Simplified to use only FAISS vector search and Neo4j graph traversal.
 import os
 import sys
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
+import numpy as np
 from dotenv import load_dotenv
 
 # Add paths for imports
@@ -22,6 +23,12 @@ load_dotenv()
 # Configuration from environment variables
 DEFAULT_TOP_K = int(os.getenv("DEFAULT_TOP_K", "10"))
 RRF_K = int(os.getenv("RRF_K", "60"))  # Reciprocal Rank Fusion constant
+GRAPH_SCORE_RESULTS = os.getenv("GRAPH_SCORE_RESULTS", "true").lower() == "true"  # Score graph results by semantic similarity
+GRAPH_MAX_RESULTS_FOR_RRF = int(os.getenv("GRAPH_MAX_RESULTS_FOR_RRF", "150"))  # Max graph results to send to RRF (after scoring)
+GRAPH_SIMILARITY_THRESHOLD_MODE = os.getenv("GRAPH_SIMILARITY_THRESHOLD_MODE", "adaptive").lower()  # "adaptive", "fixed", "percentile"
+GRAPH_SIMILARITY_THRESHOLD_FIXED = float(os.getenv("GRAPH_SIMILARITY_THRESHOLD_FIXED", "0.5"))  # Fixed threshold (if mode="fixed")
+GRAPH_SIMILARITY_THRESHOLD_PERCENTILE = float(os.getenv("GRAPH_SIMILARITY_THRESHOLD_PERCENTILE", "0.3"))  # Percentile threshold (if mode="percentile", e.g., 0.3 = bottom 30% filtered)
+MIN_GRAPH_RESULTS_FOR_RRF = int(os.getenv("MIN_GRAPH_RESULTS_FOR_RRF", "3"))  # Minimum graph results needed to use RRF
 
 
 class HybridQueryEngine:
@@ -54,7 +61,9 @@ class HybridQueryEngine:
     
     def detect_query_type(self, query: str) -> Dict[str, bool]:
         """
-        Detect what type of query this is to determine search strategy.
+        Detect what type of query this is for informational/debugging purposes.
+        Note: In hybrid search, both vector and graph search are always used if enabled,
+        regardless of query type detection. This is just for informational purposes.
         
         Args:
             query: User query string
@@ -64,8 +73,15 @@ class HybridQueryEngine:
         """
         query_lower = query.lower()
         
-        # Graph-specific patterns
-        graph_patterns = [
+        # Strong graph-specific patterns (queries that clearly need graph traversal)
+        strong_graph_patterns = [
+            'find clauses for', 'clauses addressing', 'incidents violating',
+            'show relationships', 'what articles', 'which articles',
+            'compliance gap', 'coverage gap', 'not covered'
+        ]
+        
+        # Moderate graph patterns (may benefit from graph but also semantic)
+        moderate_graph_patterns = [
             'article', 'art ', 'gdpr article', 'clause', 'incident',
             'violates', 'addresses', 'compliance', 'gap', 'coverage',
             'relationship', 'related to', 'connected', 'linked',
@@ -78,9 +94,16 @@ class HybridQueryEngine:
             'what articles', 'which articles', 'show relationships'
         ]
         
-        is_graph_query = any(pattern in query_lower for pattern in graph_patterns)
+        # Check for strong graph patterns
+        is_strong_graph_query = any(pattern in query_lower for pattern in strong_graph_patterns)
+        # Check for moderate graph patterns
+        has_graph_elements = any(pattern in query_lower for pattern in moderate_graph_patterns)
         is_relationship_query = any(pattern in query_lower for pattern in relationship_patterns)
-        is_semantic_query = not is_graph_query  # Default to semantic if not graph-specific
+        
+        # In hybrid search, queries can be BOTH semantic AND graph queries
+        # Most queries benefit from both methods
+        is_graph_query = is_strong_graph_query or has_graph_elements
+        is_semantic_query = True  # Always true - semantic search works for all queries
         
         return {
             'is_graph_query': is_graph_query,
@@ -88,16 +111,198 @@ class HybridQueryEngine:
             'is_semantic_query': is_semantic_query
         }
     
-    def graph_traversal_search(self, query: str) -> List[Dict]:
+    def _score_graph_results(self, query: str, results: List[Dict]) -> List[Dict]:
+        """
+        Score graph results by semantic similarity to the query.
+        Adds 'similarity' score to each result for ranking.
+        Uses batch embedding generation for efficiency.
+        
+        Args:
+            query: User query
+            results: List of graph results
+            
+        Returns:
+            List of results with similarity scores added
+        """
+        if not results:
+            return results
+        
+        try:
+            # Import embedding functions
+            from query_engine import get_query_embedding
+            from local_embeddings import is_local_embeddings_enabled, generate_local_embeddings_batch
+            import os
+            
+            # Get query embedding
+            query_embedding = get_query_embedding(query)
+            if query_embedding is None or query_embedding.size == 0:
+                # If embedding fails, return results with default score
+                for result in results:
+                    result['similarity'] = 0.0
+                return results
+            
+            # Collect all texts to embed (batch processing)
+            texts_to_embed = []
+            result_indices = []  # Track which result each text belongs to
+            
+            for idx, result in enumerate(results):
+                text_to_score = result.get('text', '') or result.get('title', '') or result.get('description', '')
+                if text_to_score:
+                    texts_to_embed.append(text_to_score)
+                    result_indices.append(idx)
+                else:
+                    result['similarity'] = 0.0
+            
+            if not texts_to_embed:
+                return results
+            
+            # Batch embed all texts at once (much faster!)
+            use_local = is_local_embeddings_enabled()
+            if use_local and os.getenv("USE_LOCAL_EMBEDDINGS", "auto").lower() in ["true", "auto"]:
+                # Use batch local embeddings
+                result_embeddings = generate_local_embeddings_batch(texts_to_embed)
+            else:
+                # Fallback: try to batch via API or do one-by-one
+                # For API, we'd need to batch the API calls, but for now fallback to one-by-one
+                # This is still better than before because we only process texts that exist
+                result_embeddings = None
+                if len(texts_to_embed) > 1:
+                    # Try local batch as fallback even if not primary
+                    result_embeddings = generate_local_embeddings_batch(texts_to_embed)
+            
+            if result_embeddings is not None and result_embeddings.size > 0:
+                # Calculate similarities for all results at once
+                for i, result_idx in enumerate(result_indices):
+                    similarity = float(np.dot(query_embedding[0], result_embeddings[i]))
+                    results[result_idx]['similarity'] = similarity
+            else:
+                # Fallback to one-by-one if batch failed
+                print(f"Warning: Batch embedding failed, falling back to one-by-one (slower)")
+                for i, result_idx in enumerate(result_indices):
+                    try:
+                        result_embedding = get_query_embedding(texts_to_embed[i])
+                        if result_embedding is not None and result_embedding.size > 0:
+                            similarity = float(np.dot(query_embedding[0], result_embedding[0]))
+                            results[result_idx]['similarity'] = similarity
+                        else:
+                            results[result_idx]['similarity'] = 0.0
+                    except Exception as e:
+                        print(f"Warning: Failed to score result {results[result_idx].get('id', 'unknown')}: {e}")
+                        results[result_idx]['similarity'] = 0.0
+            
+            # Sort by similarity (descending)
+            results.sort(key=lambda x: x.get('similarity', 0.0), reverse=True)
+            
+        except Exception as e:
+            print(f"Warning: Graph result scoring failed: {e}")
+            # Return results with default scores
+            for result in results:
+                result['similarity'] = 0.0
+        
+        return results
+    
+    def _calculate_adaptive_similarity_threshold(
+        self, 
+        graph_results: List[Dict], 
+        vector_results: List[Dict] = None
+    ) -> float:
+        """
+        Calculate adaptive similarity threshold for filtering graph results.
+        
+        Adaptive strategies:
+        1. If vector results available: Use median of vector similarities as reference
+        2. If no vector results: Use percentile-based threshold (filter bottom 30%)
+        3. Fallback: Use fixed threshold (0.5)
+        
+        Args:
+            graph_results: Graph results with similarity scores
+            vector_results: Optional vector results for reference
+            
+        Returns:
+            Adaptive threshold value (0.0-1.0)
+        """
+        if not graph_results:
+            return 0.5  # Default threshold
+        
+        # Get similarity scores from graph results
+        graph_similarities = [r.get('similarity', 0.0) for r in graph_results if r.get('similarity') is not None]
+        if not graph_similarities:
+            return 0.5  # No similarities available
+        
+        if GRAPH_SIMILARITY_THRESHOLD_MODE == "fixed":
+            return GRAPH_SIMILARITY_THRESHOLD_FIXED
+        
+        elif GRAPH_SIMILARITY_THRESHOLD_MODE == "percentile":
+            # Filter bottom X% (e.g., bottom 30%)
+            percentile_idx = int(len(graph_similarities) * GRAPH_SIMILARITY_THRESHOLD_PERCENTILE)
+            sorted_sims = sorted(graph_similarities)
+            if percentile_idx >= len(sorted_sims):
+                return sorted_sims[0] if sorted_sims else 0.5
+            return sorted_sims[percentile_idx]
+        
+        else:  # adaptive mode
+            # Strategy 1: If vector results available, use median vector similarity as reference
+            if vector_results and len(vector_results) > 0:
+                vector_similarities = [r.get('similarity', 0.0) for r in vector_results if r.get('similarity') is not None]
+                if vector_similarities:
+                    import statistics
+                    vector_median = statistics.median(vector_similarities)
+                    # Use vector median as reference, but allow graph results slightly below
+                    # (since graph results are scored differently)
+                    threshold = max(0.3, vector_median - 0.2)  # At least 0.3, or vector_median - 0.2
+                    return threshold
+            
+            # Strategy 2: Use percentile-based (filter bottom 30% of graph results)
+            percentile_idx = int(len(graph_similarities) * 0.3)
+            sorted_sims = sorted(graph_similarities)
+            if percentile_idx >= len(sorted_sims):
+                return sorted_sims[0] if sorted_sims else 0.5
+            threshold = sorted_sims[percentile_idx]
+            
+            # Ensure threshold is reasonable (not too low)
+            return max(0.3, threshold)
+    
+    def _filter_low_quality_graph_results(
+        self, 
+        graph_results: List[Dict], 
+        vector_results: List[Dict] = None
+    ) -> Tuple[List[Dict], float]:
+        """
+        Filter low-quality graph results based on adaptive similarity threshold.
+        
+        Args:
+            graph_results: Graph results with similarity scores
+            vector_results: Optional vector results for adaptive threshold calculation
+            
+        Returns:
+            Tuple of (filtered_results, threshold_used)
+        """
+        if not graph_results:
+            return [], 0.5
+        
+        # Calculate adaptive threshold
+        threshold = self._calculate_adaptive_similarity_threshold(graph_results, vector_results)
+        
+        # Filter results above threshold
+        filtered = [r for r in graph_results if r.get('similarity', 0.0) >= threshold]
+        
+        return filtered, threshold
+    
+    def graph_traversal_search(self, query: str, top_k: int = None, score_results: bool = None) -> List[Dict]:
         """
         Perform graph traversal search based on query patterns.
         
         Args:
             query: User query
+            top_k: Optional limit on number of results (if None, returns all)
+            score_results: Whether to score results by semantic similarity (default: GRAPH_SCORE_RESULTS from .env)
             
         Returns:
-            List of results from graph traversal
+            List of results from graph traversal, sorted by relevance if scored
         """
+        if score_results is None:
+            score_results = GRAPH_SCORE_RESULTS
+        
         query_lower = query.lower()
         results = []
         
@@ -226,6 +431,14 @@ class HybridQueryEngine:
                     'source': 'graph_traversal'
                 })
         
+        # Score results by semantic similarity to query
+        if score_results:
+            results = self._score_graph_results(query, results)
+        
+        # Apply top_k limit if specified
+        if top_k is not None:
+            results = results[:top_k]
+        
         return results
     
     def hybrid_search(self, query: str, top_k: int = None, 
@@ -276,7 +489,8 @@ class HybridQueryEngine:
         graph_results = []
         
         # 1. Vector Search (FAISS)
-        if use_faiss and query_types['is_semantic_query']:
+        # Always run vector search if enabled (hybrid search should use both methods)
+        if use_faiss:
             print(f"\n{'─'*80}")
             print("STEP 1: Vector Search (FAISS)")
             print(f"{'─'*80}")
@@ -308,69 +522,90 @@ class HybridQueryEngine:
             print(f"\n{'─'*80}")
             print("STEP 1: Vector Search (FAISS) - SKIPPED")
             print(f"{'─'*80}")
-            if not use_faiss:
-                print(f"  Reason: use_faiss=False")
-            elif not query_types['is_semantic_query']:
-                print(f"  Reason: Query detected as graph query, not semantic")
+            print(f"  Reason: use_faiss=False")
         
         # 2. Graph Traversal
-        if use_graph_traversal and query_types['is_graph_query']:
+        # Always run graph traversal if enabled (hybrid search should use both methods)
+        if use_graph_traversal:
             print(f"\n{'─'*80}")
             print("STEP 2: Graph Traversal (Neo4j)")
             print(f"{'─'*80}")
             try:
-                graph_results_raw = self.graph_traversal_search(query)
+                graph_results_raw = self.graph_traversal_search(query, top_k=None, score_results=True)
                 print(f"  Graph traversal returned {len(graph_results_raw)} results")
                 
-                # Count by type
-                type_counts = {}
+                # Limit graph results before filtering for performance (results are already scored and sorted)
+                if len(graph_results_raw) > GRAPH_MAX_RESULTS_FOR_RRF:
+                    print(f"  → Limiting graph results from {len(graph_results_raw)} to {GRAPH_MAX_RESULTS_FOR_RRF} (top scored) before filtering")
+                    graph_results_raw = graph_results_raw[:GRAPH_MAX_RESULTS_FOR_RRF]
+                
+                # Count by type (before filtering)
+                type_counts_before = {}
                 for r in graph_results_raw:
                     r_type = r.get('type', 'unknown')
-                    type_counts[r_type] = type_counts.get(r_type, 0) + 1
-                if type_counts:
-                    print(f"  Results by type: {type_counts}")
+                    type_counts_before[r_type] = type_counts_before.get(r_type, 0) + 1
+                if type_counts_before:
+                    print(f"  Results by type (before filtering): {type_counts_before}")
                 
-                if graph_results_raw:
-                    print(f"  Top 3 results:")
-                    for i, r in enumerate(graph_results_raw[:3], 1):
+                # Apply adaptive similarity filtering (Option B)
+                graph_results_filtered, threshold_used = self._filter_low_quality_graph_results(
+                    graph_results_raw, 
+                    vector_results if use_faiss else None
+                )
+                
+                print(f"  → Adaptive similarity threshold: {threshold_used:.4f} (mode: {GRAPH_SIMILARITY_THRESHOLD_MODE})")
+                print(f"  → Filtered from {len(graph_results_raw)} to {len(graph_results_filtered)} results")
+                
+                if graph_results_filtered:
+                    print(f"  Top 3 filtered results:")
+                    for i, r in enumerate(graph_results_filtered[:3], 1):
                         r_type = r.get('type', 'unknown')
+                        similarity = r.get('similarity', 0.0)
                         r_text = r.get('text', r.get('description', ''))[:60]
-                        print(f"    {i}. [{r_type}] {r_text}...")
+                        print(f"    {i}. [{r_type}] similarity={similarity:.4f} | {r_text}...")
                 
-                for result in graph_results_raw:
+                # Only add filtered results
+                for result in graph_results_filtered:
                     graph_results.append({
                         **result,
                         'source': 'graph_traversal'
                     })
-                print(f"  → Added {len(graph_results)} graph results")
+                print(f"  → Added {len(graph_results)} filtered graph results to RRF")
             except Exception as e:
                 print(f"  ❌ Graph traversal error: {e}")
         else:
             print(f"\n{'─'*80}")
             print("STEP 2: Graph Traversal (Neo4j) - SKIPPED")
             print(f"{'─'*80}")
-            if not use_graph_traversal:
-                print(f"  Reason: use_graph_traversal=False")
-            elif not query_types['is_graph_query']:
-                print(f"  Reason: Query detected as semantic query, not graph query")
+            print(f"  Reason: use_graph_traversal=False")
         
         # Merge results using RRF (only if both sources have results)
         print(f"\n{'─'*80}")
         print("STEP 3: Result Merging")
         print(f"{'─'*80}")
         print(f"  Vector results: {len(vector_results)}")
-        print(f"  Graph results: {len(graph_results)}")
+        print(f"  Graph results (after filtering): {len(graph_results)}")
         print(f"  Total before merge: {len(vector_results) + len(graph_results)}")
         
+        # Option B: Skip graph if filtered results are too few
+        if len(graph_results) < MIN_GRAPH_RESULTS_FOR_RRF:
+            if len(graph_results) > 0:
+                print(f"  → Graph results ({len(graph_results)}) below minimum ({MIN_GRAPH_RESULTS_FOR_RRF}): skipping graph, using vector only")
+            else:
+                print(f"  → No graph results after filtering: using vector only")
+            if len(vector_results) > 0:
+                merged_results = vector_results[:top_k]
+            else:
+                merged_results = []
         # If only one source has results, skip RRF (already sorted)
-        if len(vector_results) > 0 and len(graph_results) == 0:
+        elif len(vector_results) > 0 and len(graph_results) == 0:
             print(f"  → Only vector results: skipping RRF, returning sorted vector results")
             merged_results = vector_results[:top_k]
         elif len(graph_results) > 0 and len(vector_results) == 0:
             print(f"  → Only graph results: skipping RRF, returning graph results")
             merged_results = graph_results[:top_k]
         elif len(vector_results) > 0 and len(graph_results) > 0:
-            print(f"  → Both sources have results: using RRF to merge")
+            print(f"  → Both sources have results ({len(vector_results)} vector, {len(graph_results)} graph): using RRF to merge")
             merged_results = self._merge_and_rank_results_rrf(
                 vector_results, 
                 graph_results, 
@@ -532,6 +767,44 @@ class HybridQueryEngine:
         
         # Last resort: use all available fields
         return str(result)
+    
+    def graph_query(self, query: str, top_k: int = None,
+                   rerank: bool = True, generate_answer: bool = True) -> Dict[str, Any]:
+        """
+        Complete graph query pipeline with scoring, reranking, and answer generation.
+        Standalone graph search method matching evaluation behavior.
+        
+        Args:
+            query: User query
+            top_k: Number of results (not applied, uses all scored results)
+            rerank: Whether to rerank results (recommended: True)
+            generate_answer: Whether to generate answer using LLM (recommended: True)
+            
+        Returns:
+            Complete query result with answer
+        """
+        # Step 1: Graph traversal + semantic scoring
+        all_graph_results = self.graph_traversal_search(query, top_k=None, score_results=True)
+        # Results are already scored and sorted by similarity
+        
+        results = all_graph_results
+        
+        # Step 2: Rerank if enabled
+        if rerank and results:
+            results = self.vector_engine.rerank_results(query, results, top_n=min(8, len(results)))
+        
+        # Step 3: Generate answer if enabled
+        answer = None
+        if generate_answer and results:
+            answer = self.vector_engine.generate_answer(query, results[:8])
+        
+        return {
+            'query': query,
+            'results': results,
+            'answer': answer,
+            'num_results': len(results),
+            'sources_used': {'graph_traversal': True}
+        }
     
     def hybrid_query(self, query: str, top_k: int = 10,
                     rerank: bool = True, generate_answer: bool = True,
