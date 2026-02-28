@@ -114,6 +114,9 @@ coverage.xml
 # Windows thumbnail cache
 Thumbs.db
 
+# Documentation (local only)
+README.md
+
 # Allow local overrides: uncomment to ignore local config
 # local_settings.py
 
