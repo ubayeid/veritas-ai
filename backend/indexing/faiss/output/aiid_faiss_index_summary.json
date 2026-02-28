@@ -1,0 +1,12 @@
+{
+  "num_vectors": 29802,
+  "dimension": 384,
+  "index_type": "IndexFlatIP",
+  "distance_metric": "Inner Product (Cosine Similarity)",
+  "normalized": true,
+  "source_files": [
+    "incidents_embeddings.json",
+    "reports_embeddings.json"
+  ],
+  "num_source_files": 2
+}

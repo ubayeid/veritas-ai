@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance RAG System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Compliance RAG System</h1>
+            <p class="subtitle">Query company policies, GDPR standards, and AIID incidents</p>
+        </header>
+
+        <div class="mode-selector">
+            <label for="search-mode">Search Mode:</label>
+            <select id="search-mode">
+                <option value="vector">Vector (FAISS)</option>
+                <option value="graph">Graph (Neo4j)</option>
+                <option value="hybrid">Hybrid (Vector + Graph)</option>
+            </select>
+        </div>
+
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="input-container">
+                <input type="text" id="user-input" placeholder="Type your question here..." />
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+
+        <div class="settings-panel">
+            <h3>Settings</h3>
+            <div class="setting-item">
+                <label for="top-k">Top K:</label>
+                <input type="number" id="top-k" value="8" min="1" max="50" />
+            </div>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="rerank" checked />
+                    Rerank Results
+                </label>
+            </div>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="generate-answer" checked />
+                    Generate Answer
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

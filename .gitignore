@@ -56,6 +56,7 @@ desktop.ini
 # dotenv and secrets
 .env
 .env.*
+!.env.example
 credentials.json
 secret_*.json
 
@@ -64,14 +65,16 @@ secret_*.json
 *.db
 
 # FAISS / vector indexes and large binary indexes
-**/faiss/*.index
-**/faiss/*.index.*
-**/faiss/*.index_summary.json
+backend/indexing/faiss/indexes/**/*.index
+backend/indexing/faiss/indexes/**/*.index.*
+backend/indexing/faiss/indexes/**/*.index_summary.json
+backend/indexing/faiss/indexes/**/*_metadata.pkl
 *.index
 *.index_summary.json
 *.idx
 *.bin
 *.npy
+!backend/indexing/faiss/indexes/.gitkeep
 
 # Neo4j and local DB data
 neo4j/data/
@@ -82,15 +85,15 @@ data/processed/
 data/vector/
 
 # Regenerated local embeddings (temporary)
-backend/data_processing/processed/vector/regenerated_local/
+backend/processed/vector/regenerated_local/
 
 # Processed embeddings (large files, regenerate as needed)
-backend/data_processing/processed/vector/**/*.json
-!backend/data_processing/processed/vector/.gitkeep
+backend/processed/vector/**/*.json
+!backend/processed/vector/.gitkeep
 
 # Processed graph data (can be regenerated)
-backend/data_processing/processed/graph/**/*.json
-!backend/data_processing/processed/graph/.gitkeep
+backend/processed/graph/**/*.json
+!backend/processed/graph/.gitkeep
 
 # Model weights / caches
 *.ckpt

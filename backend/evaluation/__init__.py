@@ -2,7 +2,6 @@
 Evaluation module for comparing Vector vs Graph vs Hybrid Search.
 """
 
-from .evaluate_search import SearchEvaluator, SearchMetrics
+from .ir_evaluation import IREvaluator, QueryResult, ChunkResult
 
-__all__ = ['SearchEvaluator', 'SearchMetrics']
-
+__all__ = ['IREvaluator', 'QueryResult', 'ChunkResult']

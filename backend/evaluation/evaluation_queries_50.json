@@ -1,0 +1,310 @@
+{
+  "metadata": {
+    "total_queries": 50,
+    "standard": 30,
+    "long_tail": 20,
+    "note": "All queries are evaluated by ALL THREE methods: vector, graph, and hybrid"
+  },
+  "queries": [
+    {
+      "query": "What are the privacy policies?",
+      "type": "standard",
+      "category": "factual",
+      "id": "Q001"
+    },
+    {
+      "query": "Find GDPR articles about data minimization",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q002"
+    },
+    {
+      "query": "What clauses address GDPR Article 5?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q003"
+    },
+    {
+      "query": "Find incidents related to data breaches",
+      "type": "standard",
+      "category": "incidents",
+      "id": "Q004"
+    },
+    {
+      "query": "How does Meta use client data?",
+      "type": "standard",
+      "category": "factual",
+      "id": "Q005"
+    },
+    {
+      "query": "What are the data processing requirements?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q006"
+    },
+    {
+      "query": "Show me information about user consent",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q007"
+    },
+    {
+      "query": "Find clauses about data retention policies",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q008"
+    },
+    {
+      "query": "What privacy rights do users have?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q009"
+    },
+    {
+      "query": "How is personal data collected?",
+      "type": "standard",
+      "category": "factual",
+      "id": "Q010"
+    },
+    {
+      "query": "Find GDPR requirements for data security",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q011"
+    },
+    {
+      "query": "What are the compliance monitoring procedures?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q012"
+    },
+    {
+      "query": "Show me cookie usage policies",
+      "type": "standard",
+      "category": "factual",
+      "id": "Q013"
+    },
+    {
+      "query": "Find incidents violating data protection",
+      "type": "standard",
+      "category": "incidents",
+      "id": "Q014"
+    },
+    {
+      "query": "What are the data sharing practices?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q015"
+    },
+    {
+      "query": "How can users access their data?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q016"
+    },
+    {
+      "query": "Find articles about right to erasure",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q017"
+    },
+    {
+      "query": "What are the data breach notification requirements?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q018"
+    },
+    {
+      "query": "Show me third party data sharing policies",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q019"
+    },
+    {
+      "query": "Find clauses addressing data portability rights",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q020"
+    },
+    {
+      "query": "What are the user data deletion procedures?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q021"
+    },
+    {
+      "query": "Find GDPR articles on data accuracy",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q022"
+    },
+    {
+      "query": "How does Meta handle data transfers?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q023"
+    },
+    {
+      "query": "What are the data subject rights?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q024"
+    },
+    {
+      "query": "Find clauses about automated decision making",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q025"
+    },
+    {
+      "query": "What are the data processing legal bases?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q026"
+    },
+    {
+      "query": "Show me information about data controllers",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q027"
+    },
+    {
+      "query": "Find GDPR requirements for consent management",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q028"
+    },
+    {
+      "query": "What are the data protection impact assessments?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q029"
+    },
+    {
+      "query": "How are data processing agreements structured?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q030"
+    },
+    {
+      "query": "What are the specific privacy policies that govern how Meta collects and uses user data?",
+      "type": "long_tail",
+      "category": "factual",
+      "id": "Q031"
+    },
+    {
+      "query": "Find all GDPR articles and clauses that specifically address data minimization requirements for personal information",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q032"
+    },
+    {
+      "query": "What are the compliance gaps between Meta's privacy policy and GDPR Article 5 requirements?",
+      "type": "long_tail",
+      "category": "analytical",
+      "id": "Q033"
+    },
+    {
+      "query": "How does Meta handle user consent for data processing and what are the specific requirements?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q034"
+    },
+    {
+      "query": "Find all incident reports related to data breaches that violated GDPR data protection principles",
+      "type": "long_tail",
+      "category": "incidents",
+      "id": "Q035"
+    },
+    {
+      "query": "What are the specific procedures and requirements for users to exercise their right to erasure under GDPR?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q036"
+    },
+    {
+      "query": "Show me detailed information about how Meta shares user data with third parties and partners",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q037"
+    },
+    {
+      "query": "Find all clauses in privacy policies that address data retention periods and deletion procedures",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q038"
+    },
+    {
+      "query": "What are the security measures and technical safeguards that Meta implements to protect personal data?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q039"
+    },
+    {
+      "query": "How can users access, download, and transfer their personal data according to data portability rights?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q040"
+    },
+    {
+      "query": "Find all GDPR articles that specify requirements for data breach notification and reporting procedures",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q041"
+    },
+    {
+      "query": "What are the differences between Meta's cookie policy and GDPR requirements for tracking technologies?",
+      "type": "long_tail",
+      "category": "analytical",
+      "id": "Q042"
+    },
+    {
+      "query": "Show me comprehensive information about how Meta collects personal data through various platforms and services",
+      "type": "long_tail",
+      "category": "factual",
+      "id": "Q043"
+    },
+    {
+      "query": "Find all incidents where data protection violations occurred and identify which GDPR articles were violated",
+      "type": "long_tail",
+      "category": "incidents",
+      "id": "Q044"
+    },
+    {
+      "query": "What are the specific compliance monitoring procedures and audit requirements for GDPR data processing activities?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q045"
+    },
+    {
+      "query": "What are the detailed requirements for obtaining valid consent under GDPR and how does Meta implement them?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q046"
+    },
+    {
+      "query": "Find all GDPR articles that establish the legal basis for processing personal data and their specific conditions",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q047"
+    },
+    {
+      "query": "How does Meta ensure data accuracy and what procedures exist for correcting inaccurate personal information?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q048"
+    },
+    {
+      "query": "What are the specific requirements for data protection by design and by default under GDPR Article 25?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q049"
+    },
+    {
+      "query": "Find all clauses that describe how Meta handles cross-border data transfers and the legal mechanisms used",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q050"
+    }
+  ]
+}

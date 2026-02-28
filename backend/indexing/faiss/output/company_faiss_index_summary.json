@@ -1,0 +1,13 @@
+{
+  "num_vectors": 68,
+  "dimension": 384,
+  "index_type": "IndexFlatIP",
+  "distance_metric": "Inner Product (Cosine Similarity)",
+  "normalized": true,
+  "source_files": [
+    "Meta Cookies Policy_embeddings.json",
+    "Meta Privacy Policy_embeddings.json",
+    "Meta Terms of Service_embeddings.json"
+  ],
+  "num_source_files": 3
+}

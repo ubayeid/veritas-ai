@@ -1,220 +1,187 @@
-# Compliance RAG System
+# Veritas AI - Agentic Compliance Monitoring System
 
-A hybrid search system that analyzes company documents against GDPR requirements using vector search and knowledge graphs.
+<div align="center">
 
----
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-active-success.svg)
 
-## 🎯 What It Does
+**An intelligent hybrid RAG system with multi-agent architecture for automated compliance monitoring and risk assessment**
 
-This system helps companies:
-- **Find compliance gaps** between their policies and GDPR requirements
-- **Identify coverage** - which GDPR articles are addressed in company documents
-- **Get actionable insights** - specific recommendations for compliance improvements
-- **Search intelligently** - combines semantic search with relationship analysis
+[Features](#-features) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [Documentation](#-documentation) • [Contributing](#-contributing)
 
----
-
-## ✨ Key Features
-
-### 1. **Hybrid Search**
-- **Vector Search (FAISS)** - Fast semantic similarity matching across all data
-- **Graph Traversal (Neo4j)** - Relationship-based queries (clauses → articles, incidents → articles)
-- **Combined Results** - Merges semantic search with structural relationships
-
-### 2. **Compliance Analysis**
-- **Gap Detection** - Find GDPR articles not covered by company documents
-- **Coverage Analysis** - See which articles ARE addressed
-- **Clause Mapping** - Link company clauses to GDPR articles
-
-### 3. **Intelligent Answers**
-- **Contextualized Responses** - LLM-generated answers from search results
-- **Source Citations** - Know where information comes from
-- **Actionable Recommendations** - What to fix and how
+</div>
 
 ---
 
-## 🏗️ Architecture
+## 🎯 Overview
 
-```
-┌─────────────────┐
-│  Company Docs   │  ┌──────────────┐
-│  (PDFs)         │  │  GDPR PDF    │
-└────────┬────────┘  └──────┬───────┘
-         │                   │
-         ▼                   ▼
-    ┌─────────────────────────────┐
-    │   Data Processing Pipeline  │
-    │  - Extract text             │
-    │  - Create embeddings        │
-    │  - Build graph structure    │
-    └───────────┬─────────────────┘
-                │
-         ┌──────┴──────┐
-         ▼             ▼
-    ┌─────────┐   ┌─────────┐
-    │  FAISS  │   │  Neo4j  │
-    │  Vector │   │  Graph  │
-    │  DB     │   │  DB     │
-    └────┬────┘   └────┬────┘
-         │              │
-         └──────┬───────┘
-                ▼
-         ┌─────────────┐
-         │  Hybrid     │
-         │  Query      │
-         │  Engine     │
-         └──────┬──────┘
-                ▼
-         ┌─────────────┐
-         │  Chatbot    │
-         │  Interface  │
-         └─────────────┘
-```
+**Veritas AI** is a comprehensive compliance monitoring system that combines **hybrid retrieval-augmented generation (RAG)** with a **multi-agent architecture** to automatically analyze company policies against regulatory standards (e.g., GDPR, AI Act) and identify compliance gaps.
+
+### Key Innovation
+
+Unlike traditional compliance tools, Veritas AI uses:
+- **Hybrid Search**: Combines FAISS vector similarity with Neo4j knowledge graph traversal
+- **Multi-Agent System**: Four specialized agents working together for comprehensive analysis
+- **Automated Gap Detection**: Identifies missing coverage and policy violations automatically
+- **Incident-Based Risk Assessment**: Learns from historical AI incidents to predict risks
+
+---
+
+## ✨ Features
+
+### 🔍 **Three Search Modes**
+- **Vector Search**: Fast semantic similarity using FAISS
+- **Graph Traversal**: Relationship-based queries using Neo4j knowledge graphs
+- **Hybrid Search**: Combined approach with Reciprocal Rank Fusion (RRF) for best results
+
+### 🤖 **Multi-Agent Architecture**
+1. **Monitoring Agent** - Observes AI application behavior in real-time
+2. **Decision Making Agent** - Evaluates compliance risk levels
+3. **Compliance Verification Agent** - Identifies specific policy violations
+4. **Orchestration Agent** - Coordinates agents and makes final decisions
+
+### 💡 **Core Capabilities**
+- ✅ **Compliance Gap Detection** - Find missing regulatory coverage
+- ✅ **Policy Mapping** - Link company clauses to regulatory articles
+- ✅ **Risk Assessment** - Evaluate compliance risks with scoring
+- ✅ **Incident Analysis** - Learn from historical AI incidents (AIID database)
+- ✅ **Interactive CLI** - Query system via command line
+- ✅ **Web Interface** - Modern browser-based UI
+- ✅ **REST API** - Full API for integration
+- ✅ **Evaluation Framework** - Built-in IR metrics for research
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. **Setup**
+### Prerequisites
+
+- **Python 3.8+**
+- **Neo4j** (Desktop or Docker) - [Download](https://neo4j.com/download/)
+- **OpenAI API Key** - [Get one here](https://platform.openai.com/api-keys)
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/ubayeid/veritas-ai.git
+cd veritas-ai
+
 # Install dependencies
 pip install -r requirements.txt
 
-# Set up environment variables (.env)
-# Copy .env.example to .env and edit with your values
-cp .env.example .env
-# Edit .env with your API keys and preferences
+# Set up environment variables
+cp .env.example .env  # If available, or create .env manually
+```
 
-# Required:
-OPENAI_API_KEY=your_key_here
+### Configuration
+
+Create a `.env` file in the project root:
+
+```env
+# Required
+OPENAI_API_KEY=your_api_key_here
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=password
+NEO4J_PASSWORD=your_password
 
-# Optional (see CONFIGURATION.md for all options):
-EMBEDDING_MODEL=text-embedding-3-small
+# Optional (with defaults)
+API_PROVIDER=openai
 LLM_MODEL=gpt-4
+EMBEDDING_MODEL=text-embedding-3-small
 CHUNK_SIZE=1000
 CHUNK_OVERLAP=200
 ```
 
-### 2. **Build the System** (One-Time Setup)
+### One-Time Database Setup
 
-**⚠️ Important**: This step processes raw data and builds databases. It only needs to be run once (or when you add new data).
+**⚠️ Important**: Build the databases before first use (one-time setup):
 
-**Windows PowerShell:**
-```powershell
-# Complete pipeline (all steps)
-.\build.ps1 -Complete
-
-# Or step by step:
-.\build.ps1 -ProcessGraph
-.\build.ps1 -ProcessVector
-.\build.ps1 -BuildFaiss
-.\build.ps1 -BuildNeo4j
-.\build.ps1 -AddEmbeddings
-.\build.ps1 -LinkRelationships
-```
-
-**Linux/Mac/WSL (using Makefile):**
 ```bash
-# Complete pipeline (all steps)
-make complete
+# Build FAISS vector indexes
+python backend/indexing/faiss/build_faiss_index.py --source company
+python backend/indexing/faiss/build_faiss_index.py --source aiid
+python backend/indexing/faiss/build_faiss_index.py --source standards
 
-# Or step by step:
-make process-graph      # Process raw data to graph JSON
-make process-vector      # Generate embeddings
-make build-faiss         # Build FAISS indexes
-make build-neo4j         # Build Neo4j graph (requires Neo4j running)
-make add-embeddings      # Add embeddings to Neo4j nodes
-make link-relationships  # Link clauses to articles
-```
+# Build Neo4j knowledge graph (requires Neo4j running)
+python backend/indexing/neo4j/build_knowledge_graph.py
 
-**Option C: Manual (Individual Scripts)**
-```bash
-# Process graph data
-python backend/data_processing/graph/gdpr_to_graph.py
-python backend/data_processing/graph/company_to_graph.py
-python backend/data_processing/graph/aiid_to_graph.py
-
-# Generate embeddings
-python backend/data_processing/vector/standards_to_embeddings.py
-python backend/data_processing/vector/company_to_embeddings.py
-python backend/data_processing/vector/aiid_to_embeddings.py
-
-# Build FAISS indexes
-python backend/building_database/faiss/company_to_faiss_database.py
-python backend/building_database/faiss/standards_to_faiss_database.py
-python backend/building_database/faiss/aiid_to_faiss_database.py
-
-# Build Neo4j graph (requires Neo4j running)
-python backend/building_database/neo4j/build_knowledge_graph.py
-
-# Add embeddings to Neo4j
-python backend/building_database/neo4j/add_embeddings.py \
-    --json-dir backend/data_processing/processed/vector/company \
+# Add embeddings to Neo4j nodes
+python backend/indexing/neo4j/scripts/add_embeddings.py \
+    --json-dir backend/processing/vector/company \
     --node-type Clause
-python backend/building_database/neo4j/add_embeddings.py \
-    --json-dir backend/data_processing/processed/vector/standards \
+
+python backend/indexing/neo4j/scripts/add_embeddings.py \
+    --json-dir backend/processing/vector/standards \
     --node-type Article
 
 # Link clauses to articles
-python backend/building_database/neo4j/link_clauses_to_articles.py
+python backend/indexing/neo4j/scripts/link_clauses_to_articles.py
 ```
 
-### 3. **Start the Web Application** (Runtime)
+### Usage
 
-**⚠️ Important**: This starts the servers to use the system. Run this every time you want to query the chatbot.
-
-**Windows PowerShell:**
-```powershell
-.\start_web_app.ps1
-# Or using build script:
-.\build.ps1 -StartWebApp
-```
-
-**Linux/Mac/WSL:**
-```bash
-# Option 1: Using Makefile
-make start-web-app
-
-# Option 2: Manual (two terminals)
-# Terminal 1 - Backend API Server
-python backend/searching/api_server.py
-
-# Terminal 2 - Frontend Server
-python frontend/start_server.py
-```
-
-Then open **http://localhost:8000** in your browser.
-
-### 4. **Run Chatbot** (Alternative: Command Line)
+#### 1. Interactive CLI (Query/Answer)
 
 ```bash
-# Vector-only mode
-python backend/searching/run_chatbot.py
+# Vector mode (FAISS semantic search)
+python query.py interactive --mode vector
 
-# Hybrid mode (recommended)
-python backend/searching/run_chatbot.py --hybrid
+# Graph mode (Neo4j graph traversal)
+python query.py interactive --mode graph
+
+# Hybrid mode (recommended - combines both)
+python query.py interactive --mode hybrid
 ```
 
-### 5. **Run Agentic System** (New!)
+**Interactive Commands:**
+- Type your question to search
+- `!help` - Show help
+- `!mode` - Switch between vector/graph/hybrid modes
+- `!settings` - Adjust search parameters
+- `!quit` - Exit
+
+#### 2. Multi-Agent Orchestration
 
 ```bash
-# Using Makefile (recommended)
-make run-agent
-
-# Or directly
-source venv/bin/activate
-python backend/agentic/run_agent.py
+# Run 4-agent compliance monitoring system
+python query.py agent
 ```
 
-See [docs/AGENTIC_SYSTEM.md](docs/AGENTIC_SYSTEM.md) for details.
+**Agent Commands:**
+- Type events/queries to evaluate compliance
+- `!audit` - Show audit log
+- `!quit` - Exit
+
+#### 3. Web Interface
+
+```bash
+# Terminal 1: Start API server
+python backend/retrieval/interfaces/api_server.py
+
+# Terminal 2: Start frontend server
+python frontend/scripts/start_server.py
+
+# Open browser: http://localhost:8000
+```
+
+#### 4. Evaluation (Research)
+
+```bash
+# Run evaluation on 50 queries
+python query.py evaluate
+
+# Custom queries and output
+python query.py evaluate \
+    --queries my_queries.json \
+    --output results.csv \
+    --top-k 8
+```
 
 ---
 
-## 💬 Example Queries
+## 📊 Example Queries
 
 ### Compliance Analysis
 ```
@@ -235,190 +202,262 @@ See [docs/AGENTIC_SYSTEM.md](docs/AGENTIC_SYSTEM.md) for details.
 "What AIID incidents violate GDPR Article 5?"
 ```
 
----
-
-## 📊 Current Results
-
-### Database Statistics
-- **Total Articles:** 102 GDPR articles
-- **Coverage:** 8 articles covered (7.84%)
-- **Gaps:** 94 articles not covered
-- **Relationships:** 21 clause-to-article links
-- **Clauses:** 89 company document clauses
-
-### Example Coverage
-- **Article 12:** 10 clauses (Transparent information)
-- **Article 62:** 4 clauses (Joint operations)
-- **Article 45:** 2 clauses (Data transfers)
+### Risk Assessment
+```
+"Does this AI system comply with AI Act?"
+"Evaluate compliance risk for facial recognition system"
+```
 
 ---
 
-## 🔧 System Components
+## 🏗️ Architecture
 
-### Data Processing
-- **`backend/data_processing/`** - Extract and process PDFs/CSVs
-- **`backend/data_processing/graph/`** - Convert to graph structure
-- **`backend/data_processing/vector/`** - Generate embeddings
-
-### Database Building
-- **`backend/building_database/neo4j/`** - Build knowledge graph
-- **`backend/building_database/faiss/`** - Build vector database
-- **`backend/building_database/neo4j/link_clauses_to_articles.py`** - Create relationships
-
-### Search & Query
-- **`backend/searching/`** - Search engines and chatbot
-- **`backend/searching/hybrid_query_engine.py`** - Hybrid search logic
-- **`backend/searching/chatbot.py`** - Interactive interface
-
----
-
-## 📁 Project Structure
+### System Overview
 
 ```
-comp_rag/
-├── data/
-│   ├── company/              # Raw company PDFs (3 documents: Privacy Policy, Terms of Service, Cookie Policy)
-│   ├── standards/            # GDPR PDF
-│   ├── aiid/                 # AIID data (incidents.csv → graph, classification CSVs → embeddings only)
-│   └── processed/
-│       ├── graph/            # Processed graph JSONs
-│       └── vector/           # Embeddings JSONs
+┌─────────────────────────────────────────────────────────┐
+│                    User Interface                        │
+│  (CLI / Web UI / REST API)                              │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              Multi-Agent Orchestration                   │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐     │
+│  │ Monitoring   │ │ Decision    │ │ Compliance   │     │
+│  │ Agent        │ │ Making      │ │ Verification │     │
+│  └──────────────┘ └──────────────┘ └──────────────┘     │
+│                    ┌──────────────┐                      │
+│                    │ Orchestration│                      │
+│                    │ Agent        │                      │
+│                    └──────────────┘                      │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              Hybrid Query Engine                         │
+│  ┌──────────────┐         ┌──────────────┐             │
+│  │ Vector       │         │ Graph        │             │
+│  │ (FAISS)      │ + RRF + │ (Neo4j)      │             │
+│  └──────────────┘         └──────────────┘             │
+└────────────────────┬────────────────────────────────────┘
+                     │
+        ┌────────────┴────────────┐
+        ▼                         ▼
+┌──────────────┐         ┌──────────────┐
+│ FAISS        │         │ Neo4j        │
+│ Indexes     │         │ Knowledge    │
+│ (Vectors)   │         │ Graph        │
+└──────────────┘         └──────────────┘
+```
+
+### Data Flow
+
+1. **Data Ingestion**: Company documents (PDFs), regulatory standards (GDPR), AIID incidents (CSV)
+2. **Processing**: Extract text → Generate embeddings → Build graph structure
+3. **Storage**: FAISS (vectors) + Neo4j (graph relationships)
+4. **Querying**: Hybrid search combines semantic similarity + graph traversal
+5. **Analysis**: Multi-agent system evaluates compliance and generates insights
+
+### Project Structure
+
+```
+veritas-ai/
+├── query.py                    # Main CLI entry point
+├── requirements.txt            # Python dependencies
+├── LICENSE                     # MIT License
 │
 ├── backend/
-│   ├── data_processing/      # Data extraction & processing
-│   ├── building_database/    # Build Neo4j & FAISS
-│   └── searching/            # Search engines & chatbot
+│   ├── agents/                # Multi-agent architecture
+│   │   ├── monitoring/        # Monitoring Agent
+│   │   ├── decision_making/   # Decision Making Agent
+│   │   ├── compliance/        # Compliance Verification Agent
+│   │   ├── orchestration/     # Orchestration Agent
+│   │   ├── core/              # Base classes
+│   │   └── utils/             # Utilities
+│   │
+│   ├── retrieval/             # Core query engines
+│   │   ├── engines/           # Vector, Graph, Hybrid engines
+│   │   ├── interfaces/        # API server, chatbot
+│   │   └── utils/             # Helper functions
+│   │
+│   ├── indexing/              # Database building (one-time setup)
+│   │   ├── faiss/            # FAISS index builder
+│   │   └── neo4j/            # Neo4j graph builder
+│   │
+│   ├── processing/            # Data processing pipeline
+│   │   ├── graph/            # Graph data processing
+│   │   ├── vector/           # Embedding generation
+│   │   └── utils/            # Processing utilities
+│   │
+│   ├── evaluation/            # Evaluation framework
+│   │   └── ir_evaluation.py  # IR metrics calculation
+│   │
+│   └── prompts/               # LLM prompt templates
 │
-├── requirements.txt          # Python dependencies
-└── README.md                # This file
+├── frontend/                   # Web interface
+│   ├── static/                # HTML, CSS, JavaScript
+│   └── scripts/                # Server scripts
+│
+└── data/                       # Data directory (not in repo)
+    ├── company/               # Company documents (PDFs)
+    ├── standards/             # Regulatory standards (PDFs)
+    └── aiid/                  # AIID incident database (CSV)
 ```
-
----
-
-## 🎓 How It Works
-
-### 1. **Data Ingestion**
-- Company documents (3 PDFs: Privacy Policy, Terms of Service, Cookie Policy)
-- GDPR regulation (PDF)
-- AIID incident database (incidents.csv → graph nodes, classification CSVs → embeddings only)
-
-### 2. **Processing**
-- Extract text and structure
-- Generate embeddings (OpenAI)
-- Create graph nodes and relationships
-
-### 3. **Storage**
-- **FAISS** - Fast vector similarity search
-- **Neo4j** - Graph database for relationships
-
-### 4. **Querying**
-- **FAISS Vector Search** - Find semantically similar content across all databases
-- **Graph Traversal** - Follow relationships (clauses → articles, incidents → articles)
-- **Hybrid** - Combines FAISS vector search + Neo4j graph traversal for comprehensive results
-
-### 5. **Answer Generation**
-- Rerank results by relevance
-- Generate contextualized answer using LLM
-- Cite sources and provide recommendations
-
----
-
-## 🔍 Search Modes
-
-### Vector-Only Mode
-- Fast semantic search
-- Good for general queries
-- Uses FAISS database
-
-### Hybrid Mode (Recommended)
-- Combines FAISS vector search + Neo4j graph traversal
-- Best for compliance analysis
-- Shows relationships and coverage
-- No redundant Neo4j vector search (simplified architecture)
-
-**Switch modes:** Type `!mode` in chatbot
-
----
-
-## 📈 Key Achievements
-
-✅ **Simplified Hybrid Search** - FAISS Vector Search + Neo4j Graph Traversal (removed redundant Neo4j vector search)  
-✅ **Compliance Gap Detection** - Identifies 94 gaps  
-✅ **Coverage Analysis** - Shows 8 articles with coverage  
-✅ **Clause Mapping** - Links company clauses to GDPR articles  
-✅ **Intelligent Answers** - LLM-generated contextual responses  
-✅ **Company-Specific Insights** - Focused on actual company documents  
-
----
-
-## 🛠️ Requirements
-
-- **Python 3.8+**
-- **Neo4j** (Desktop or Docker)
-- **OpenAI API Key** (for embeddings and LLM)
-- **Dependencies:** See `requirements.txt`
-
-## ⚙️ Configuration
-
-All parameters are customizable via `.env` file. See `CONFIGURATION.md` for details.
-
-**Quick customization:**
-- `CHUNK_SIZE` - Size of text chunks (default: 1000)
-- `CHUNK_OVERLAP` - Overlap between chunks (default: 200)
-- `LLM_MODEL` - Model for answers (default: gpt-4)
-- `EMBEDDING_MODEL` - Embedding model (default: text-embedding-3-small)
-- `ADDRESSES_SIMILARITY_THRESHOLD` - For linking clauses to articles (default: 0.45)
-
-Copy `.env.example` to `.env` and customize as needed!
 
 ---
 
 ## 📚 Documentation
 
 ### User Guides
-- **[docs/USAGE.md](docs/USAGE.md)** - Usage guide with sample questions and Cypher queries
-- **[docs/SETUP.md](docs/SETUP.md)** - Setup and configuration guide (xAI, local embeddings, Neo4j)
-- **[miscellaneous/USER_MANUAL.md](miscellaneous/USER_MANUAL.md)** - Complete user manual
+- **[Setup Guide](docs/SETUP.md)** - Detailed setup instructions
+- **[Usage Guide](docs/USAGE.md)** - How to use the system
+- **[Frontend README](frontend/README.md)** - Web interface documentation
 
 ### Technical Documentation
-- **[docs/TECHNICAL.md](docs/TECHNICAL.md)** - Technical architecture and data flow
-- **[docs/SEARCH_ARCHITECTURE.md](docs/SEARCH_ARCHITECTURE.md)** - Complete search architecture (vector, graph, hybrid)
-- **[docs/AGENTIC_SYSTEM.md](docs/AGENTIC_SYSTEM.md)** - Agentic system guide
+- **[Architecture](backend/agents/ARCHITECTURE.md)** - Multi-agent architecture details
+- **[Retrieval System](backend/retrieval/README.md)** - Query engines documentation
+- **[Processing Pipeline](backend/processing/README.md)** - Data processing guide
 
-### Research & Publication
-- **[docs/EXPERIMENTAL_SETUP.md](docs/EXPERIMENTAL_SETUP.md)** - Experimental setup for reproducibility
-- **[docs/DATASET.md](docs/DATASET.md)** - Dataset documentation
-- **[docs/PUBLICATION_READINESS.md](docs/PUBLICATION_READINESS.md)** - Publication readiness checklist
+### Research
+- **[Evaluation Framework](backend/evaluation/README.md)** - IR metrics and evaluation
+- **[Project Checklist](PROJECT_CHECKLIST.md)** - Research paper checklist
+
+---
+
+## 🧪 Evaluation
+
+The system includes a built-in evaluation framework for research:
+
+```bash
+# Run evaluation on 50 queries
+python query.py evaluate
+
+# Export results for analysis
+python query.py evaluate --export-chunks --output results.csv
+```
+
+**Metrics Supported:**
+- Precision@K, Recall@K, F1@K
+- Mean Reciprocal Rank (MRR)
+- Mean Average Precision (MAP)
+- Normalized Discounted Cumulative Gain (NDCG@K)
+
+---
+
+## 🔧 Configuration
+
+All parameters are customizable via `.env` file:
+
+```env
+# Search Settings
+TOP_K=8                    # Number of results to retrieve
+SIMILARITY_THRESHOLD=0.0   # Minimum similarity score
+RERANK=true                # Use LLM reranking
+GENERATE_ANSWER=true       # Generate contextualized answers
+
+# Model Settings
+LLM_MODEL=gpt-4
+LLM_TEMPERATURE=0.3
+LLM_MAX_TOKENS=3000
+EMBEDDING_MODEL=text-embedding-3-small
+
+# Hybrid Search
+RRF_K=60                   # Reciprocal Rank Fusion constant
+```
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+```bash
+# Clone and setup
+git clone https://github.com/ubayeid/veritas-ai.git
+cd veritas-ai
+pip install -r requirements.txt
+
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Make changes and test
+python query.py interactive --mode hybrid
+
+# Commit and push
+git commit -m "Add your feature"
+git push origin feature/your-feature-name
+```
+
+### Code Style
+
+- Follow PEP 8 for Python code
+- Add docstrings to all functions and classes
+- Write tests for new features
+- Update documentation as needed
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **AIID Database** - AI Incident Database for incident data
+- **LangChain & LangGraph** - Agent framework
+- **LlamaIndex** - RAG abstractions
+- **Neo4j** - Graph database
+- **FAISS** - Vector similarity search
+
+---
+
+## 📞 Contact & Support
+
+- **Author**: Ubayeid U.
+- **Repository**: [https://github.com/ubayeid/veritas-ai](https://github.com/ubayeid/veritas-ai)
+- **Issues**: [GitHub Issues](https://github.com/ubayeid/veritas-ai/issues)
 
 ---
 
 ## 🎯 Use Cases
 
-1. **Compliance Audits** - Find gaps in GDPR coverage
-2. **Policy Review** - Compare company policies with regulations
-3. **Risk Assessment** - Link incidents to violated articles
-4. **Documentation** - Map clauses to requirements
+1. **Compliance Audits** - Automated GDPR/AI Act compliance checking
+2. **Policy Review** - Compare company policies against regulations
+3. **Risk Assessment** - Identify potential compliance risks
+4. **Gap Analysis** - Find missing regulatory coverage
+5. **Incident Learning** - Learn from historical AI incidents
 
 ---
 
-## 💡 Tips
+## ⭐ Features in Detail
 
-- **Use Hybrid Mode** for compliance queries
-- **Lower similarity threshold** (0.4-0.45) for more relationships
-- **Check Neo4j Browser** to visualize the graph
-- **Use `!help`** in chatbot for commands
+### Hybrid Search
+- **Vector Search**: Semantic similarity using FAISS for fast retrieval
+- **Graph Traversal**: Relationship-based queries using Neo4j (clauses → articles, incidents → articles)
+- **Reciprocal Rank Fusion**: Combines both methods for optimal results
+
+### Multi-Agent System
+- **Modular Design**: Each agent has a specific role
+- **LangGraph Integration**: State machine-based agent orchestration
+- **Audit Logging**: Complete audit trail of all decisions
+- **Extensible**: Easy to add new agents
+
+### Evaluation Framework
+- **IR Metrics**: Standard information retrieval metrics
+- **Answer Generation**: LLM-generated answers for evaluation
+- **Export Support**: CSV export for analysis
 
 ---
 
-## 📞 Support
+<div align="center">
 
-For issues or questions:
-- See [docs/USAGE.md](docs/USAGE.md) for usage examples and troubleshooting
-- See [docs/TECHNICAL.md](docs/TECHNICAL.md) for technical details
-- See [docs/AGENTIC_SYSTEM.md](docs/AGENTIC_SYSTEM.md) for agentic system guide
+**Built with ❤️ for automated compliance monitoring**
 
----
+[⭐ Star this repo](https://github.com/ubayeid/veritas-ai) if you find it useful!
 
-**Built for:** Compliance analysis and GDPR gap detection  
-**Technology:** Python, Neo4j, FAISS, OpenAI, LLMs  
-**Status:** ✅ Working - Coverage analysis functional
+</div>

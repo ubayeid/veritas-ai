@@ -1,153 +1,96 @@
-# Compliance RAG Chatbot - Web Interface
+# Compliance RAG System - Web Interface
 
-Web-based interface for the Compliance RAG Chatbot, allowing you to query company policies, AIID incidents, and regulatory standards through a modern browser interface.
+Modern web-based interface for querying the Compliance RAG System with support for Vector, Graph, and Hybrid search modes.
 
 ## Features
 
-- 🎨 Modern, responsive UI
-- 💬 Real-time chat interface
-- ⚙️ Configurable search settings
-- 📊 Display of search results with similarity scores
-- 🤖 AI-generated contextualized answers
-- 📱 Mobile-friendly design
+- 🎨 **Modern UI**: Clean, responsive design
+- 🔍 **Three Search Modes**: Vector, Graph, and Hybrid
+- 💬 **Real-time Chat**: Interactive Q&A interface
+- ⚙️ **Configurable Settings**: Top-K, Reranking, Answer Generation
+- 📊 **Mode Indicators**: Visual badges showing which method was used
 
-## Setup
+## Quick Start
 
-### Prerequisites
+### 1. Start API Server
 
-1. Backend API server must be running (see `backend/searching/README.md`)
-2. Modern web browser (Chrome, Firefox, Safari, Edge)
-
-### Installation
-
-No installation needed! Just open `index.html` in your browser, or serve it through a web server.
-
-### Running Locally
-
-#### Option 1: Using the Provided Script (Recommended)
-
-**Windows:**
 ```bash
-# From project root
-start_web_app.bat
+# Terminal 1: Start the API server
+python backend/retrieval/interfaces/api_server.py
 ```
 
-**Linux/Mac:**
+The API will run on `http://localhost:5000`
+
+### 2. Start Frontend Server
+
 ```bash
-# From project root
-chmod +x start_web_app.sh
-./start_web_app.sh
+# Terminal 2: Start the frontend server
+python frontend/scripts/start_server.py
 ```
 
-This will start both the backend API server and frontend server automatically.
+The frontend will run on `http://localhost:8000`
 
-#### Option 2: Manual Start - Python HTTP Server
+### 3. Open Browser
 
-**Start Backend:**
-```bash
-# Terminal 1 - Backend API Server
-python backend/searching/api_server.py
-```
-
-**Start Frontend:**
-```bash
-# Terminal 2 - Frontend Server
-cd frontend
-python start_server.py
-# Or use: python -m http.server 8000
-```
-
-Then open http://localhost:8000 in your browser.
-
-#### Option 3: Direct File Access (Not Recommended)
-
-Simply open `frontend/index.html` in your web browser.
-
-**Note:** Some browsers may block CORS requests when opening files directly. Use Option 1 or 2 instead.
-
-## Configuration
-
-### API Endpoint
-
-By default, the frontend connects to `http://localhost:5000/api`. 
-
-To change this, edit `frontend/app.js` and modify the `API_BASE_URL` constant:
-
-```javascript
-const API_BASE_URL = 'http://your-api-url:port/api';
-```
-
-### Settings
-
-The web interface allows you to configure:
-
-- **Databases**: Select which databases to search (Company, AIID, Standards)
-- **Top K Results**: Number of results to retrieve (1-50)
-- **Rerank Results**: Enable/disable LLM-based reranking
-- **Generate Answer**: Enable/disable contextualized answer generation
-- **Similarity Threshold**: Minimum similarity score (0.0-1.0)
+Navigate to: **http://localhost:8000**
 
 ## Usage
 
-1. **Start the Backend API Server**:
-   ```bash
-   python backend/searching/api_server.py
-   ```
+1. **Select Search Mode**: Choose from dropdown:
+   - **Vector**: FAISS semantic similarity search
+   - **Graph**: Neo4j knowledge graph traversal
+   - **Hybrid**: Combined vector + graph with RRF
 
-2. **Open the Frontend**:
-   - Option 1: Open `frontend/index.html` directly in your browser
-   - Option 2: Serve it using a web server (see above)
+2. **Configure Settings** (optional):
+   - **Top K**: Number of results to retrieve (default: 8)
+   - **Rerank**: Use LLM to rerank results
+   - **Generate Answer**: Generate answer using LLM
 
-3. **Start Chatting**:
-   - Type your question in the input box
-   - Click "Send" or press Enter
-   - View the AI-generated answer and search results
+3. **Ask Questions**: Type your question and click Send
 
 ## API Endpoints
 
-The frontend uses the following API endpoints:
+The frontend uses the unified `/api/query` endpoint:
 
-- `GET /api/health` - Health check
-- `GET /api/databases` - List available databases
-- `POST /api/query` - Submit a query and get answer + results
-- `POST /api/search` - Search without contextualization
+```javascript
+POST /api/query
+{
+  "query": "your question",
+  "mode": "vector|graph|hybrid",
+  "top_k": 8,
+  "rerank": true,
+  "generate_answer": true
+}
+```
 
-See `backend/searching/api_server.py` for API documentation.
+## Architecture
+
+```
+Frontend (localhost:8000)
+    ↓ HTTP POST
+API Server (localhost:5000)
+    ↓ Mode Routing
+Query Engines:
+    - VectorQueryEngine (FAISS)
+    - GraphQueryEngine (Neo4j)
+    - HybridQueryEngine (RRF)
+```
+
+## Files
+
+- `static/index.html` - Main HTML structure
+- `static/styles.css` - Styling
+- `static/app.js` - JavaScript client logic
+- `scripts/start_server.py` - Simple HTTP server
 
 ## Troubleshooting
 
-### CORS Errors
+**API Connection Error:**
+- Ensure API server is running on port 5000
+- Check CORS settings in `api_server.py`
+- Verify API_BASE_URL in `app.js`
 
-If you see CORS errors in the browser console:
-- Make sure you're serving the frontend through a web server (not opening the file directly)
-- Or configure CORS in the backend API server
-
-### Cannot Connect to API
-
-- Ensure the backend API server is running on port 5000
-- Check that the API URL in `app.js` matches your backend server URL
-- Check browser console for detailed error messages
-
-### No Results Found
-
-- Verify that FAISS databases are built
-- Check backend server logs for errors
-- Try adjusting the similarity threshold in settings
-
-## Browser Compatibility
-
-- Chrome/Edge: ✅ Fully supported
-- Firefox: ✅ Fully supported
-- Safari: ✅ Fully supported
-- Internet Explorer: ❌ Not supported
-
-## Development
-
-To modify the frontend:
-
-1. Edit `index.html` for structure
-2. Edit `styles.css` for styling
-3. Edit `app.js` for functionality
-
-The frontend uses vanilla JavaScript (no frameworks required) for simplicity and ease of customization.
-
+**No Results:**
+- Check Neo4j is running (for graph/hybrid modes)
+- Verify FAISS indexes are built (for vector/hybrid modes)
+- Check API server logs for errors

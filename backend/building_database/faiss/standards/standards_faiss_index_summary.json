@@ -1,6 +1,0 @@
-{
-  "num_vectors": 459,
-  "dimension": 384,
-  "index_type": "IndexFlatL2",
-  "distance_metric": "L2"
-}
