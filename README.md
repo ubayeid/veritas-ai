@@ -18,6 +18,16 @@
 
 **Veritas AI** is a comprehensive compliance monitoring system that combines **hybrid retrieval-augmented generation (RAG)** with a **multi-agent architecture** to automatically analyze company policies against regulatory standards (e.g., GDPR, AI Act) and identify compliance gaps.
 
+### Problem Statement
+
+Organizations struggle to maintain compliance with evolving regulations like GDPR and the EU AI Act. Manual compliance audits are:
+- **Time-consuming** - Require expert review of hundreds of documents
+- **Error-prone** - Easy to miss gaps or violations
+- **Expensive** - Require specialized legal/compliance teams
+- **Reactive** - Only catch issues after they occur
+
+**Veritas AI solves this** by automating compliance monitoring using AI agents that continuously analyze policies, detect gaps, and assess risks.
+
 ### Key Innovation
 
 Unlike traditional compliance tools, Veritas AI uses:
@@ -72,7 +82,8 @@ cd veritas-ai
 pip install -r requirements.txt
 
 # Set up environment variables
-cp .env.example .env  # If available, or create .env manually
+cp .env.example .env
+# Edit .env with your API keys and Neo4j credentials
 ```
 
 ### Configuration
@@ -309,19 +320,13 @@ veritas-ai/
 
 ## 📚 Documentation
 
-### User Guides
-- **[Setup Guide](docs/SETUP.md)** - Detailed setup instructions
-- **[Usage Guide](docs/USAGE.md)** - How to use the system
-- **[Frontend README](frontend/README.md)** - Web interface documentation
-
-### Technical Documentation
-- **[Architecture](backend/agents/ARCHITECTURE.md)** - Multi-agent architecture details
-- **[Retrieval System](backend/retrieval/README.md)** - Query engines documentation
-- **[Processing Pipeline](backend/processing/README.md)** - Data processing guide
-
-### Research
-- **[Evaluation Framework](backend/evaluation/README.md)** - IR metrics and evaluation
-- **[Project Checklist](PROJECT_CHECKLIST.md)** - Research paper checklist
+The project structure is self-documenting with clear module organization:
+- `backend/agents/` - Multi-agent architecture implementation
+- `backend/retrieval/` - Query engines (Vector, Graph, Hybrid)
+- `backend/indexing/` - Database building scripts
+- `backend/processing/` - Data processing pipeline
+- `backend/evaluation/` - Evaluation framework
+- `frontend/` - Web interface
 
 ---
 
@@ -368,9 +373,78 @@ RRF_K=60                   # Reciprocal Rank Fusion constant
 
 ---
 
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Neo4j Connection Errors:**
+```bash
+# Check if Neo4j is running
+# Windows: Check Neo4j Desktop or service status
+# Linux/Mac: sudo systemctl status neo4j
+
+# Verify connection settings in .env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+```
+
+**FAISS Index Not Found:**
+```bash
+# Build the indexes first
+python backend/indexing/faiss/build_faiss_index.py --source company
+python backend/indexing/faiss/build_faiss_index.py --source aiid
+python backend/indexing/faiss/build_faiss_index.py --source standards
+```
+
+**OpenAI API Errors:**
+- Verify your API key in `.env`
+- Check API balance at https://platform.openai.com/usage
+- System will fallback to local embeddings if API unavailable
+
+**Import Errors:**
+```bash
+# Ensure you're in the project root directory
+# Install all dependencies
+pip install -r requirements.txt
+```
+
+**Port Already in Use:**
+```bash
+# Change port in .env or kill existing process
+# Windows: netstat -ano | findstr :5000
+# Linux/Mac: lsof -i :5000
+```
+
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+We welcome contributions! 
+
+### Development Setup
+
+```bash
+# Clone and setup
+git clone https://github.com/ubayeid/veritas-ai.git
+cd veritas-ai
+pip install -r requirements.txt
+
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Make changes and test
+python query.py interactive --mode hybrid
+
+# Commit and push
+git commit -m "Add your feature"
+git push origin feature/your-feature-name
+```
+
+### Code Style
+
+- Follow PEP 8 for Python code
+- Add docstrings to all functions and classes
+- Write tests for new features
+- Update documentation as needed
 
 ### Development Setup
 
