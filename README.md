@@ -454,6 +454,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## 💡 Lessons Learned
+
+Combining hybrid RAG (vector + graph) with multi-agent orchestration enables automated compliance monitoring that scales beyond manual audits while maintaining interpretability through structured knowledge graphs.
+
 ## 🙏 Acknowledgments
 
 - **AIID Database** - AI Incident Database for incident data
