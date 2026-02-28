@@ -446,32 +446,6 @@ git push origin feature/your-feature-name
 - Write tests for new features
 - Update documentation as needed
 
-### Development Setup
-
-```bash
-# Clone and setup
-git clone https://github.com/ubayeid/veritas-ai.git
-cd veritas-ai
-pip install -r requirements.txt
-
-# Create feature branch
-git checkout -b feature/your-feature-name
-
-# Make changes and test
-python query.py interactive --mode hybrid
-
-# Commit and push
-git commit -m "Add your feature"
-git push origin feature/your-feature-name
-```
-
-### Code Style
-
-- Follow PEP 8 for Python code
-- Add docstrings to all functions and classes
-- Write tests for new features
-- Update documentation as needed
-
 ---
 
 ## 📄 License
