@@ -133,7 +133,7 @@ def get_query_embedding(query: str, model: Optional[str] = None) -> np.ndarray:
             raise Exception("Failed to generate local embeddings")
     
     # Try API-based embeddings
-    client = get_embedding_client()  # Uses appropriate client (OpenAI for embeddings even with xAI)
+    client = get_embedding_client()  # Uses appropriate client (OpenAI for embeddings even with Anthropic)
     
     try:
         response = client.embeddings.create(
@@ -238,7 +238,7 @@ class VectorQueryEngine:
             }
         }
         
-        # Initialize API client (supports both OpenAI and xAI)
+        # Initialize API client (supports OpenAI and Anthropic)
         self.client = get_api_client()
     
     def load_database(self, db_name: str):

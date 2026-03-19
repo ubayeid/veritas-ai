@@ -1,0 +1,161 @@
+{
+  "metadata": {
+    "total_queries": 25,
+    "db": "company",
+    "standard": 20,
+    "long_tail": 5,
+    "note": "Queries are tailored to a single database, but can still be run through vector/graph/hybrid."
+  },
+  "queries": [
+    {
+      "query": "What does the privacy policy say about collecting personal data?",
+      "type": "standard",
+      "category": "factual",
+      "id": "C001"
+    },
+    {
+      "query": "What categories of personal data are collected?",
+      "type": "standard",
+      "category": "factual",
+      "id": "C002"
+    },
+    {
+      "query": "How is user consent obtained and managed?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C003"
+    },
+    {
+      "query": "What is the policy on sharing data with third parties?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C004"
+    },
+    {
+      "query": "What is the policy on data retention and retention periods?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C005"
+    },
+    {
+      "query": "How can a user request access to their data?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C006"
+    },
+    {
+      "query": "How can a user request deletion of their data?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C007"
+    },
+    {
+      "query": "What is the policy on cookies and tracking technologies?",
+      "type": "standard",
+      "category": "factual",
+      "id": "C008"
+    },
+    {
+      "query": "What are the stated security measures for protecting personal data?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C009"
+    },
+    {
+      "query": "What is the policy on cross-border / international data transfers?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C010"
+    },
+    {
+      "query": "What are the stated purposes for processing personal data?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C011"
+    },
+    {
+      "query": "How is data used for advertising or personalization?",
+      "type": "standard",
+      "category": "factual",
+      "id": "C012"
+    },
+    {
+      "query": "What are the rules for account creation and minimum age requirements?",
+      "type": "standard",
+      "category": "factual",
+      "id": "C013"
+    },
+    {
+      "query": "What is the process for responding to data breaches?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C014"
+    },
+    {
+      "query": "What is the policy on data accuracy and updating user information?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C015"
+    },
+    {
+      "query": "What contact method is provided for privacy questions or DPO contact?",
+      "type": "standard",
+      "category": "factual",
+      "id": "C016"
+    },
+    {
+      "query": "What does the policy say about user rights (access, rectification, erasure, portability)?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C017"
+    },
+    {
+      "query": "What are the procedures for opting out of marketing communications?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C018"
+    },
+    {
+      "query": "What are the policies around profiling and automated decision-making?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C019"
+    },
+    {
+      "query": "What is the policy on processing children’s data?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "C020"
+    },
+    {
+      "query": "Find clauses describing legal bases for processing (consent, contract, legitimate interests).",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "C021"
+    },
+    {
+      "query": "Find clauses describing how long different data categories are retained and what triggers deletion.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "C022"
+    },
+    {
+      "query": "Find clauses describing cross-border transfers and safeguards (e.g., SCCs) and when they apply.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "C023"
+    },
+    {
+      "query": "Find clauses describing third-party sharing: who, why, and what data is shared.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "C024"
+    },
+    {
+      "query": "Find clauses describing how users can exercise GDPR rights and the verification steps required.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "C025"
+    }
+  ]
+}

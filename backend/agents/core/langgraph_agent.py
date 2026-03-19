@@ -6,10 +6,8 @@ Implements agentic workflow using LangGraph state machine.
 from typing import Dict, Any, List, Optional, TypedDict
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain.tools import BaseTool, StructuredTool
-from langchain.agents import create_react_agent, AgentExecutor
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.memory import ConversationBufferMemory
+from langchain_core.tools import BaseTool, StructuredTool
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import json
 import sys
 from pathlib import Path
@@ -58,10 +56,13 @@ class ComplianceLangGraphAgent(BaseAgent):
         
         # Initialize LLM if not provided
         if llm is None:
-            from langchain_openai import ChatOpenAI
-            from backend.retrieval.utils.model_config import get_agent_model, AGENT_TEMPERATURE
-            llm_model = get_agent_model()
-            llm = ChatOpenAI(model=llm_model, temperature=AGENT_TEMPERATURE)
+            try:
+                from backend.retrieval.utils.api_client import get_langchain_llm
+                llm = get_langchain_llm(use_agent_model=True)
+            except (ImportError, ValueError) as e:
+                # Fallback: use OpenAI client directly
+                from backend.retrieval.utils.api_client import get_api_client
+                llm = get_api_client()
         
         # Initialize tools
         tool_registry = ToolRegistry(str(base_dir))
@@ -275,10 +276,11 @@ Be specific and actionable. Use only the tools listed above."""),
         step = plan[current_step]
         tool_name = step.get("tool")
         parameters = step.get("parameters", {})
+        goal = state.get("goal", "")
         
         # Execute tool
         try:
-            result = self.tool_registry.call_tool(tool_name, **parameters)
+            result = self.tool_registry.call_tool(tool_name, goal=goal, **parameters)
             
             # Store result
             execution_result = {

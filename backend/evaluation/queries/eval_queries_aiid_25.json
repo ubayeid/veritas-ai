@@ -1,0 +1,161 @@
+{
+  "metadata": {
+    "total_queries": 25,
+    "db": "aiid",
+    "standard": 20,
+    "long_tail": 5,
+    "note": "Queries are tailored to a single database, but can still be run through vector/graph/hybrid."
+  },
+  "queries": [
+    {
+      "query": "Find incidents related to data breaches.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A001"
+    },
+    {
+      "query": "Find incidents related to surveillance or privacy invasion.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A002"
+    },
+    {
+      "query": "Find incidents involving unauthorized data access.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A003"
+    },
+    {
+      "query": "Find incidents involving discrimination or unfair treatment.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A004"
+    },
+    {
+      "query": "Find incidents involving biometric data misuse.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A005"
+    },
+    {
+      "query": "Find incidents involving facial recognition.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A006"
+    },
+    {
+      "query": "Find incidents involving children or minors.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A007"
+    },
+    {
+      "query": "Find incidents involving consent issues.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A008"
+    },
+    {
+      "query": "Find incidents involving data sharing with third parties.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A009"
+    },
+    {
+      "query": "Find incidents involving cross-border data transfers.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A010"
+    },
+    {
+      "query": "What kinds of risks are most common across incidents?",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A011"
+    },
+    {
+      "query": "List incidents that mention data retention problems.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A012"
+    },
+    {
+      "query": "List incidents that mention lack of transparency or notice.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A013"
+    },
+    {
+      "query": "List incidents that mention security failures.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A014"
+    },
+    {
+      "query": "List incidents that mention misuse of personal data.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A015"
+    },
+    {
+      "query": "Find incidents that violate GDPR Article 5.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A016"
+    },
+    {
+      "query": "Find incidents that violate GDPR Article 6.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A017"
+    },
+    {
+      "query": "Find incidents that violate GDPR Article 12.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A018"
+    },
+    {
+      "query": "Find incidents that violate GDPR Article 13.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A019"
+    },
+    {
+      "query": "Find incidents that violate GDPR Article 32.",
+      "type": "standard",
+      "category": "incidents",
+      "id": "A020"
+    },
+    {
+      "query": "Find incidents where the description suggests missing lawful basis and identify the violated articles.",
+      "type": "long_tail",
+      "category": "incidents",
+      "id": "A021"
+    },
+    {
+      "query": "Find incidents where the description suggests inadequate security controls and summarize the risk types.",
+      "type": "long_tail",
+      "category": "incidents",
+      "id": "A022"
+    },
+    {
+      "query": "Find incidents that involve sensitive data and summarize what went wrong and which GDPR articles were violated.",
+      "type": "long_tail",
+      "category": "incidents",
+      "id": "A023"
+    },
+    {
+      "query": "Find incidents related to consent and describe common failure modes across the top results.",
+      "type": "long_tail",
+      "category": "incidents",
+      "id": "A024"
+    },
+    {
+      "query": "Find incidents mentioning data breaches and summarize the violated GDPR articles across the results.",
+      "type": "long_tail",
+      "category": "incidents",
+      "id": "A025"
+    }
+  ]
+}

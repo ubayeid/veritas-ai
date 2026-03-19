@@ -1,0 +1,161 @@
+{
+  "metadata": {
+    "total_queries": 25,
+    "db": "standards",
+    "standard": 20,
+    "long_tail": 5,
+    "note": "Queries are tailored to a single database, but can still be run through vector/graph/hybrid."
+  },
+  "queries": [
+    {
+      "query": "Find GDPR articles about data minimization.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S001"
+    },
+    {
+      "query": "Find GDPR requirements for data security.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S002"
+    },
+    {
+      "query": "Find GDPR articles about lawful basis for processing.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S003"
+    },
+    {
+      "query": "Find GDPR articles about transparency and notice.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S004"
+    },
+    {
+      "query": "Find GDPR articles about consent.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S005"
+    },
+    {
+      "query": "Find GDPR articles about right of access.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S006"
+    },
+    {
+      "query": "Find GDPR articles about right to rectification.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S007"
+    },
+    {
+      "query": "Find GDPR articles about right to erasure.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S008"
+    },
+    {
+      "query": "Find GDPR articles about data portability.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S009"
+    },
+    {
+      "query": "Find GDPR articles about restriction of processing.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S010"
+    },
+    {
+      "query": "Find GDPR articles about data accuracy.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S011"
+    },
+    {
+      "query": "Find GDPR articles about storage limitation.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S012"
+    },
+    {
+      "query": "Find GDPR articles about integrity and confidentiality.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S013"
+    },
+    {
+      "query": "Find GDPR articles about international transfers.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S014"
+    },
+    {
+      "query": "Find GDPR articles about DPIAs (data protection impact assessments).",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S015"
+    },
+    {
+      "query": "Find GDPR Article 25 requirements (privacy by design and by default).",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S016"
+    },
+    {
+      "query": "What does GDPR say about breach notification timing?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S017"
+    },
+    {
+      "query": "What does GDPR require for processing children’s data?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S018"
+    },
+    {
+      "query": "Find GDPR articles related to accountability and governance.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S019"
+    },
+    {
+      "query": "Find GDPR articles related to processors and controller obligations.",
+      "type": "standard",
+      "category": "compliance",
+      "id": "S020"
+    },
+    {
+      "query": "Summarize GDPR Article 5 principles and how they constrain data processing.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "S021"
+    },
+    {
+      "query": "Explain GDPR Article 6 lawful bases and when consent is not required.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "S022"
+    },
+    {
+      "query": "Explain GDPR Article 13/14 transparency requirements and what must be disclosed.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "S023"
+    },
+    {
+      "query": "Explain GDPR Article 32 security requirements and examples of appropriate measures.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "S024"
+    },
+    {
+      "query": "Explain GDPR Articles 15-22 data subject rights and typical compliance steps.",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "S025"
+    }
+  ]
+}

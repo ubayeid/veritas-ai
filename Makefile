@@ -38,45 +38,45 @@ process-vector:
 	@echo "✓ Vector processing complete"
 
 build-faiss:
-	@$(PYTHON) backend/indexing/faiss/company_to_faiss_database.py
-	@$(PYTHON) backend/indexing/faiss/standards_to_faiss_database.py
-	@$(PYTHON) backend/indexing/faiss/aiid_to_faiss_database.py
+	@$(PYTHON) backend/indexing/faiss/build_faiss_index.py --source company
+	@$(PYTHON) backend/indexing/faiss/build_faiss_index.py --source aiid
+	@$(PYTHON) backend/indexing/faiss/build_faiss_index.py --source standards
 	@echo "✓ FAISS indexes built"
 
 build-neo4j:
 	@$(PYTHON) backend/indexing/neo4j/build_knowledge_graph.py
-	@$(PYTHON) backend/indexing/neo4j/add_embeddings.py --json-dir backend/processing/processed/vector/company --node-type Clause
-	@$(PYTHON) backend/indexing/neo4j/add_embeddings.py --json-dir backend/processing/processed/vector/standards --node-type Article
-	@$(PYTHON) backend/indexing/neo4j/link_clauses_to_articles.py
+	@$(PYTHON) backend/indexing/neo4j/scripts/add_embeddings.py --json-dir backend/processed/vector/company --node-type Clause
+	@$(PYTHON) backend/indexing/neo4j/scripts/add_embeddings.py --json-dir backend/processed/vector/standards --node-type Article
+	@$(PYTHON) backend/indexing/neo4j/scripts/link_clauses_to_articles.py
 	@echo "✓ Neo4j graph built"
 
 complete: process-graph process-vector build-faiss build-neo4j
 	@echo "✓ Complete pipeline finished"
 
 test:
-	@test -f backend/processing/processed/graph/gdpr_graph.json && echo "✓ GDPR" || echo "✗ GDPR"
-	@test -f backend/processing/processed/graph/company_graph.json && echo "✓ Company" || echo "✗ Company"
-	@test -f backend/processing/processed/graph/aiid_graph.json && echo "✓ AIID" || echo "✗ AIID"
-	@test -f backend/indexing/faiss/company/company_faiss_index.index && echo "✓ Company FAISS" || echo "✗ Company FAISS"
-	@test -f backend/indexing/faiss/standards/standards_faiss_index.index && echo "✓ Standards FAISS" || echo "✗ Standards FAISS"
-	@test -f backend/indexing/faiss/aiid/aiid_faiss_index.index && echo "✓ AIID FAISS" || echo "✗ AIID FAISS"
+	@test -f backend/processed/graph/gdpr_graph.json && echo "✓ GDPR" || echo "✗ GDPR"
+	@test -f backend/processed/graph/company_graph.json && echo "✓ Company" || echo "✗ Company"
+	@test -f backend/processed/graph/aiid_graph.json && echo "✓ AIID" || echo "✗ AIID"
+	@test -f backend/indexing/faiss/output/company_faiss_index.index && echo "✓ Company FAISS" || echo "✗ Company FAISS"
+	@test -f backend/indexing/faiss/output/standards_faiss_index.index && echo "✓ Standards FAISS" || echo "✗ Standards FAISS"
+	@test -f backend/indexing/faiss/output/aiid_faiss_index.index && echo "✓ AIID FAISS" || echo "✗ AIID FAISS"
 
 clean:
-	@rm -f backend/processing/processed/graph/*.json
-	@rm -rf backend/processing/processed/vector/*/*.json
-	@rm -rf backend/indexing/faiss/*/*.{index,pkl,json}
+	@rm -f backend/processed/graph/*.json
+	@rm -rf backend/processed/vector/*/*.json
+	@rm -rf backend/indexing/faiss/output/*.{index,pkl,json}
 	@echo "✓ Cleanup complete"
 
 start-web-app:
 	@VENV_PYTHON="$$([ -x "$(VENV_DIR)/bin/python3" ] && echo "$(VENV_DIR)/bin/python3" || echo "$(VENV_DIR)/bin/python")"; \
-	cd backend/retrieval && $$VENV_PYTHON start_server.py & BACKEND_PID=$$!; sleep 2; \
-	cd frontend && $$VENV_PYTHON start_server.py & FRONTEND_PID=$$!; \
+	$$VENV_PYTHON query.py api & BACKEND_PID=$$!; sleep 2; \
+	$$VENV_PYTHON frontend/scripts/start_server.py & FRONTEND_PID=$$!; \
 	trap "kill $$BACKEND_PID $$FRONTEND_PID 2>/dev/null; exit" INT TERM; wait $$BACKEND_PID $$FRONTEND_PID
 
 run-agent:
 	@VENV_PYTHON="$$([ -x "$(VENV_DIR)/bin/python3" ] && echo "$(VENV_DIR)/bin/python3" || echo "$(VENV_DIR)/bin/python")"; \
-	$$VENV_PYTHON backend/agents/run_agent.py
+	$$VENV_PYTHON query.py agent
 
 run-evaluation:
 	@VENV_PYTHON="$$([ -x "$(VENV_DIR)/bin/python3" ] && echo "$(VENV_DIR)/bin/python3" || echo "$(VENV_DIR)/bin/python")"; \
-	$$VENV_PYTHON backend/evaluation/evaluate_search.py $(ARGS)
+	$$VENV_PYTHON backend/evaluation/evaluate.py run $(ARGS)

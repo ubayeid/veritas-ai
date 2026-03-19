@@ -1,0 +1,160 @@
+{
+  "metadata": {
+    "total_queries": 50,
+    "standard": 30,
+    "long_tail": 20,
+    "note": "All queries are evaluated by ALL THREE methods: vector, graph, and hybrid"
+  },
+  "queries": [
+    {
+      "query": "What are the privacy policies?",
+      "type": "standard",
+      "category": "factual",
+      "id": "Q001"
+    },
+    {
+      "query": "Find GDPR articles about data minimization",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q002"
+    },
+    {
+      "query": "What clauses address GDPR Article 5?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q003"
+    },
+    {
+      "query": "Find incidents related to data breaches",
+      "type": "standard",
+      "category": "incidents",
+      "id": "Q004"
+    },
+    {
+      "query": "How does Meta use client data?",
+      "type": "standard",
+      "category": "factual",
+      "id": "Q005"
+    },
+    {
+      "query": "What are the data processing requirements?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q006"
+    },
+    {
+      "query": "Show me information about user consent",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q007"
+    },
+    {
+      "query": "Find clauses about data retention policies",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q008"
+    },
+    {
+      "query": "What privacy rights do users have?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q009"
+    },
+    {
+      "query": "How is personal data collected?",
+      "type": "standard",
+      "category": "factual",
+      "id": "Q010"
+    },
+    {
+      "query": "Find GDPR requirements for data security",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q011"
+    },
+    {
+      "query": "What are the compliance monitoring procedures?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q012"
+    },
+    {
+      "query": "Show me cookie usage policies",
+      "type": "standard",
+      "category": "factual",
+      "id": "Q013"
+    },
+    {
+      "query": "Find incidents violating data protection",
+      "type": "standard",
+      "category": "incidents",
+      "id": "Q014"
+    },
+    {
+      "query": "What are the data sharing practices?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q015"
+    },
+    {
+      "query": "How can users access their data?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q016"
+    },
+    {
+      "query": "Find articles about right to erasure",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q017"
+    },
+    {
+      "query": "What are the data breach notification requirements?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q018"
+    },
+    {
+      "query": "Show me third party data sharing policies",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q019"
+    },
+    {
+      "query": "Find clauses addressing data portability rights",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q020"
+    },
+    {
+      "query": "What are the user data deletion procedures?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q021"
+    },
+    {
+      "query": "Find GDPR articles on data accuracy",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q022"
+    },
+    {
+      "query": "How does Meta handle data transfers?",
+      "type": "standard",
+      "category": "compliance",
+      "id": "Q023"
+    },
+    {
+      "query": "What are the specific requirements for data protection by design and by default under GDPR Article 25?",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q024"
+    },
+    {
+      "query": "Find all clauses that describe how Meta handles cross-border data transfers and the legal mechanisms used",
+      "type": "long_tail",
+      "category": "compliance",
+      "id": "Q025"
+    }
+  ]
+}

@@ -5,14 +5,16 @@ Run the Compliance Agent interactively
 import sys
 import os
 from pathlib import Path
+import argparse
+import json
 
-# Get project root (3 levels up from this file)
-project_root = Path(__file__).parent.parent.parent
-os.chdir(project_root)
+# Get repository root (4 levels up from this file)
+# backend/agents/scripts/run_agent.py -> repo_root
+repo_root = Path(__file__).resolve().parent.parent.parent.parent
+os.chdir(repo_root)
 
 # Add paths for imports
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "backend"))
+sys.path.insert(0, str(repo_root))
 
 # Check if virtual environment is activated
 # Try to detect if we're in a venv
@@ -25,10 +27,10 @@ in_venv = (
 
 if not in_venv:
     # Try to use venv python if available
-    venv_python = project_root / "venv" / "bin" / "python3"
+    venv_python = repo_root / "venv" / "Scripts" / "python.exe"
     if venv_python.exists() and venv_python.is_file():
-        print("⚠️  Warning: Virtual environment not activated!")
-        print(f"   Please run: source venv/bin/activate")
+        print("Warning: Virtual environment not activated!")
+        print(f"   Please activate your venv (Windows): .\\venv\\Scripts\\Activate.ps1")
         print(f"   Or use: {venv_python} {__file__}")
         print(f"   Or use: make run-agent")
         print()
@@ -41,31 +43,61 @@ from backend.agents.core.langgraph_agent import ComplianceLangGraphAgent
 from backend.agents.utils.agent_registry import get_registry, register_agent
 
 
-def main():
-    """Run agent interactively."""
-    # Use project root as base directory
-    base_dir = project_root
-    
-    # Initialize agent
-    print("="*80)
+def _init_agent() -> ComplianceLangGraphAgent:
+    base_dir = repo_root
+    print("=" * 80)
     print("COMPLIANCE AGENT")
-    print("="*80)
+    print("=" * 80)
     print("\nInitializing LangGraph-based agent...")
-    
     agent = ComplianceLangGraphAgent(str(base_dir))
-    # Register in global registry
     register_agent("compliance", agent, ComplianceLangGraphAgent)
-    
     print("Agent ready!")
     print("\nAvailable capabilities:")
-    
-    tools = agent.get_tools()
-    for tool in tools:
+    for tool in agent.get_tools():
         print(f"  - {tool.name}: {tool.description}")
-    
-    print("\n" + "="*80)
+    return agent
+
+
+def main():
+    """Run the agent (interactive if TTY; otherwise requires --goal)."""
+    parser = argparse.ArgumentParser(description="Run the Compliance Agent")
+    parser.add_argument(
+        "--goal",
+        type=str,
+        help="Run a single goal non-interactively (useful for CI / redirected stdin).",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="When used with --goal, print the raw result as JSON.",
+    )
+    args = parser.parse_args()
+
+    # Non-interactive environments can't use input() reliably on Windows.
+    if not sys.stdin.isatty() and not args.goal:
+        print("Error: Non-interactive session detected. Provide --goal to run once.")
+        print(r'Example: python backend\agents\scripts\run_agent.py --goal "Explain GDPR Article 5"')
+        raise SystemExit(2)
+
+    # Use project root as base directory
+    agent = _init_agent()
+
+    if args.goal:
+        result = agent.execute(args.goal)
+        if args.json:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        else:
+            print("\n" + "=" * 80)
+            print("EXECUTION RESULTS")
+            print("=" * 80)
+            print(f"Goal: {result.get('goal')}")
+            print(f"Success: {result.get('success')}")
+            print(f"Steps executed: {result.get('steps_executed')}")
+        return
+
+    print("\n" + "=" * 80)
     print("Enter your goal (or 'quit' to exit):")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
     
     while True:
         try:
@@ -75,7 +107,7 @@ def main():
                 continue
             
             if goal.lower() in ['quit', 'exit', 'q']:
-                print("\nGoodbye! 👋\n")
+                print("\nGoodbye!\n")
                 break
             
             # Execute goal

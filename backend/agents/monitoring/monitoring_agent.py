@@ -41,14 +41,11 @@ class MonitoringAgent(BaseAgent):
         # Initialize LLM if not provided
         if llm is None:
             try:
-                from langchain_openai import ChatOpenAI
-                from backend.retrieval.utils.model_config import get_agent_model, AGENT_TEMPERATURE
-                llm_model = get_agent_model()
-                llm = ChatOpenAI(model=llm_model, temperature=AGENT_TEMPERATURE)
-            except ImportError:
+                from backend.retrieval.utils.api_client import get_langchain_llm
+                llm = get_langchain_llm(use_agent_model=True)
+            except (ImportError, ValueError) as e:
                 # Fallback: use OpenAI client directly
                 from backend.retrieval.utils.api_client import get_api_client
-                from backend.retrieval.utils.model_config import get_agent_model
                 llm = get_api_client()  # Use as LLM proxy
         
         # Monitoring agent doesn't need external tools - it observes and detects

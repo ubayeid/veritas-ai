@@ -183,7 +183,7 @@ class ToolRegistry:
             for name, info in self.tools.items()
         ]
     
-    def call_tool(self, tool_name: str, **kwargs) -> Dict[str, Any]:
+    def call_tool(self, tool_name: str, goal: str = "", **kwargs) -> Dict[str, Any]:
         """
         Call a tool by name with parameters.
         
@@ -199,13 +199,17 @@ class ToolRegistry:
         
         tool = self.tools[tool_name]
         
-        # Validate and set default parameters
+        # Validate and set default parameters (with safe fallbacks)
         params = {}
         for param_name, param_info in tool['parameters'].items():
             if param_name in kwargs:
                 params[param_name] = kwargs[param_name]
             elif param_info.get('required', False):
-                raise ValueError(f"Required parameter '{param_name}' missing for tool '{tool_name}'")
+                # Common fallback: if a tool requires 'query', use the goal as query.
+                if param_name == "query" and goal:
+                    params[param_name] = goal
+                else:
+                    raise ValueError(f"Required parameter '{param_name}' missing for tool '{tool_name}'")
             elif 'default' in param_info:
                 params[param_name] = param_info['default']
         

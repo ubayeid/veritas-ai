@@ -62,7 +62,8 @@ class Neo4jConnection:
         """
         with self.driver.session() as session:
             result = session.run(query, parameters or {})
-            return [record for record in result]
+            # Return plain dicts (Record is immutable and awkward to serialize)
+            return [record.data() for record in result]
     
     def execute_write(self, query: str, parameters: Optional[dict] = None) -> list:
         """
@@ -80,11 +81,11 @@ class Neo4jConnection:
             try:
                 # Try new API (Neo4j 5.x)
                 result = session.execute_write(lambda tx: list(tx.run(query, parameters or {})))
-                return result
+                return [r.data() for r in result]
             except AttributeError:
                 # Fallback to old API (Neo4j 4.x)
                 result = session.write_transaction(lambda tx: list(tx.run(query, parameters or {})))
-                return result
+                return [r.data() for r in result]
     
     def clear_database(self):
         """Clear all nodes and relationships from the database."""

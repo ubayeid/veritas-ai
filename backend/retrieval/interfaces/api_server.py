@@ -517,9 +517,10 @@ if __name__ == '__main__':
     print(f"Server starting on http://localhost:{port}")
     print(f"Debug mode: {debug}")
     print(f"\nAvailable modes:")
-    print(f"  - Vector: {'✓' if query_engine else '✗'}")
-    print(f"  - Graph: {'✓' if graph_engine else '✗'}")
-    print(f"  - Hybrid: {'✓' if hybrid_engine else '✗'}")
+    # Avoid UnicodeEncodeError on Windows consoles (cp1252) by using ASCII.
+    print(f"  - Vector: {'OK' if query_engine else 'NO'}")
+    print(f"  - Graph: {'OK' if graph_engine else 'NO'}")
+    print(f"  - Hybrid: {'OK' if hybrid_engine else 'NO'}")
     print(f"{'='*80}\n")
     
     app.run(host='0.0.0.0', port=port, debug=debug)

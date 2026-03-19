@@ -34,7 +34,7 @@ class EmbeddingAdder:
         """
         self.conn = neo4j_conn
         
-        # Initialize API client (supports both OpenAI and xAI)
+        # Initialize API client (supports OpenAI and Anthropic)
         self.client = get_embedding_client()
         self.embedding_model = get_embedding_model()
     

@@ -3,7 +3,9 @@ Prompt templates using LangChain PromptTemplate.
 Centralized prompt management for all agents.
 """
 
-from langchain.prompts import ChatPromptTemplate, PromptTemplate, MessagesPlaceholder
+from typing import Dict, Optional
+
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from pathlib import Path
 import os
 

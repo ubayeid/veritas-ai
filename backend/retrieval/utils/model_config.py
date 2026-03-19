@@ -14,23 +14,21 @@ load_dotenv()
 # API PROVIDER CONFIGURATION
 # ============================================================================
 
-API_PROVIDER = os.getenv("API_PROVIDER", "openai").lower()  # "openai" or "xai"
+API_PROVIDER = os.getenv("API_PROVIDER", "openai").lower()  # "openai" or "anthropic"
 
 # API Keys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-XAI_API_KEY = os.getenv("XAI_API_KEY")
-XAI_BASE_URL = os.getenv("XAI_BASE_URL", "https://api.x.ai/v1")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 # ============================================================================
 # EMBEDDING MODEL CONFIGURATION
 # ============================================================================
 
-# Embedding Mode: "api" (OpenAI/xAI API) or "local" (sentence-transformers)
+# Embedding Mode: "api" (OpenAI API) or "local" (sentence-transformers)
 EMBEDDING_MODE = os.getenv("EMBEDDING_MODE", "auto").lower()  # "auto", "api", or "local"
 
 # API-based Embedding Models
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-XAI_EMBEDDING_MODEL = os.getenv("XAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
 # Local Embedding Models (sentence-transformers)
 LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
@@ -43,12 +41,12 @@ USE_LOCAL_EMBEDDINGS = os.getenv("USE_LOCAL_EMBEDDINGS", "auto").lower()
 # ============================================================================
 
 # OpenAI LLM Models
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "3000"))
 
-# xAI (Grok) LLM Models
-XAI_LLM_MODEL = os.getenv("XAI_LLM_MODEL", "grok-3")
+# Anthropic LLM Models
+ANTHROPIC_LLM_MODEL = os.getenv("ANTHROPIC_LLM_MODEL", "claude-3-5-sonnet-20241022")
 
 # ============================================================================
 # RERANKING CONFIGURATION
@@ -103,7 +101,7 @@ def get_embedding_model(provider: Optional[str] = None) -> str:
     Get the embedding model name based on current configuration.
     
     Args:
-        provider: API provider ("openai" or "xai"). If None, uses API_PROVIDER.
+        provider: API provider ("openai" or "anthropic"). If None, uses API_PROVIDER.
         
     Returns:
         Model name string
@@ -119,12 +117,12 @@ def get_embedding_model(provider: Optional[str] = None) -> str:
     
     provider = provider.lower()
     
-    if provider == "xai":
-        # xAI doesn't have native embeddings, check if we should use OpenAI
+    if provider == "anthropic":
+        # Anthropic doesn't have native embeddings, use OpenAI for embeddings
         use_openai_embeddings = os.getenv("USE_OPENAI_FOR_EMBEDDINGS", "true").lower() == "true"
         if use_openai_embeddings:
             return EMBEDDING_MODEL  # Use OpenAI embedding model
-        return XAI_EMBEDDING_MODEL
+        return LOCAL_EMBEDDING_MODEL  # Fallback to local if OpenAI not available
     
     return EMBEDDING_MODEL
 
@@ -134,7 +132,7 @@ def get_llm_model(provider: Optional[str] = None) -> str:
     Get the LLM model name based on current configuration.
     
     Args:
-        provider: API provider ("openai" or "xai"). If None, uses API_PROVIDER.
+        provider: API provider ("openai" or "anthropic"). If None, uses API_PROVIDER.
         
     Returns:
         Model name string
@@ -144,8 +142,8 @@ def get_llm_model(provider: Optional[str] = None) -> str:
     
     provider = provider.lower()
     
-    if provider == "xai":
-        return XAI_LLM_MODEL
+    if provider == "anthropic":
+        return ANTHROPIC_LLM_MODEL
     
     return LLM_MODEL
 

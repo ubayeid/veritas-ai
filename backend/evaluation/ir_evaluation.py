@@ -9,6 +9,7 @@ IR Evaluation System with Chunk Pooling and Relevance Labeling
 
 import json
 import hashlib
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Set, Tuple
 from dataclasses import dataclass, asdict, field
@@ -51,6 +52,14 @@ class QueryResult:
     chunks_by_method: Dict[str, List[ChunkResult]] = field(default_factory=dict)  # method -> chunks
     pooled_chunks: List[ChunkResult] = field(default_factory=list)  # Deduplicated chunks
     relevance_labels: Dict[str, int] = field(default_factory=dict)  # chunk_id -> relevance (0, 1, 2)
+    # Backward compatibility: historically used for retrieval-only time.
+    timing_by_method: Dict[str, float] = field(default_factory=dict)  # method -> retrieval time in seconds
+    # New timing breakdown per method:
+    # - total_s: end-to-end (retrieval + answer generation)
+    # - retrieval_s: retrieval only
+    # - answer_s: answer generation only (after retrievals ready)
+    # - non_answer_s: total_s - answer_s (i.e., retrieval + overhead)
+    timing_breakdown_by_method: Dict[str, Dict[str, float]] = field(default_factory=dict)
 
 
 class IREvaluator:
@@ -229,10 +238,30 @@ class IREvaluator:
         Returns:
             QueryResult with chunks from all methods and pooled chunks
         """
-        # Run all three methods
+        timing_by_method: Dict[str, float] = {}
+        timing_breakdown_by_method: Dict[str, Dict[str, float]] = {}
+
+        # Run all three methods with timing (retrieval + answer generation measured separately)
+        # VECTOR
+        vector_start_total = time.perf_counter()
+        vector_start_retrieval = time.perf_counter()
         vector_chunks = self.run_vector_search(query, top_k=top_k)
+        vector_retrieval_s = time.perf_counter() - vector_start_retrieval
+        timing_by_method["vector"] = vector_retrieval_s
+
+        # GRAPH
+        graph_start_total = time.perf_counter()
+        graph_start_retrieval = time.perf_counter()
         graph_chunks = self.run_graph_search(query, top_k=top_k)
+        graph_retrieval_s = time.perf_counter() - graph_start_retrieval
+        timing_by_method["graph"] = graph_retrieval_s
+
+        # HYBRID
+        hybrid_start_total = time.perf_counter()
+        hybrid_start_retrieval = time.perf_counter()
         hybrid_chunks = self.run_hybrid_search(query, top_k=top_k)
+        hybrid_retrieval_s = time.perf_counter() - hybrid_start_retrieval
+        timing_by_method["hybrid"] = hybrid_retrieval_s
         
         chunks_by_method = {
             'vector': vector_chunks,
@@ -252,9 +281,28 @@ class IREvaluator:
                 if not method_chunks:
                     print(f"  Warning: No chunks for {method} method, skipping answer generation")
                     answers_by_method[method] = None
+                    # Record timing even if no chunks (answer time = 0)
+                    if method == "vector":
+                        total_s = time.perf_counter() - vector_start_total
+                        retrieval_s = vector_retrieval_s
+                    elif method == "graph":
+                        total_s = time.perf_counter() - graph_start_total
+                        retrieval_s = graph_retrieval_s
+                    else:
+                        total_s = time.perf_counter() - hybrid_start_total
+                        retrieval_s = hybrid_retrieval_s
+                    answer_s = 0.0
+                    timing_breakdown_by_method[method] = {
+                        "total_s": float(total_s),
+                        "retrieval_s": float(retrieval_s),
+                        "answer_s": float(answer_s),
+                        "non_answer_s": float(total_s - answer_s),
+                    }
                     continue
                 try:
+                    ans_start = time.perf_counter()
                     method_answer, _ = self.generate_answer_with_attribution(query, method_chunks)
+                    ans_s = time.perf_counter() - ans_start
                     if method_answer:
                         answers_by_method[method] = method_answer
                         # Set first answer as default for backward compatibility
@@ -263,11 +311,64 @@ class IREvaluator:
                     else:
                         print(f"  Warning: Answer generation returned None for {method}")
                         answers_by_method[method] = None
+
+                    # Record timing breakdown for this method
+                    if method == "vector":
+                        total_s = time.perf_counter() - vector_start_total
+                        retrieval_s = vector_retrieval_s
+                    elif method == "graph":
+                        total_s = time.perf_counter() - graph_start_total
+                        retrieval_s = graph_retrieval_s
+                    else:
+                        total_s = time.perf_counter() - hybrid_start_total
+                        retrieval_s = hybrid_retrieval_s
+                    timing_breakdown_by_method[method] = {
+                        "total_s": float(total_s),
+                        "retrieval_s": float(retrieval_s),
+                        "answer_s": float(ans_s),
+                        "non_answer_s": float(total_s - ans_s),
+                    }
                 except Exception as e:
                     import traceback
                     print(f"  Warning: Answer generation failed for {query_id} ({method}): {e}")
                     print(f"  Traceback: {traceback.format_exc()}")
                     answers_by_method[method] = None
+                    # Record timing with failed answer generation
+                    if method == "vector":
+                        total_s = time.perf_counter() - vector_start_total
+                        retrieval_s = vector_retrieval_s
+                    elif method == "graph":
+                        total_s = time.perf_counter() - graph_start_total
+                        retrieval_s = graph_retrieval_s
+                    else:
+                        total_s = time.perf_counter() - hybrid_start_total
+                        retrieval_s = hybrid_retrieval_s
+                    timing_breakdown_by_method[method] = {
+                        "total_s": float(total_s),
+                        "retrieval_s": float(retrieval_s),
+                        "answer_s": 0.0,
+                        "non_answer_s": float(total_s),
+                    }
+        else:
+            # If not generating answers, total == retrieval for each method
+            timing_breakdown_by_method["vector"] = {
+                "total_s": float(vector_retrieval_s),
+                "retrieval_s": float(vector_retrieval_s),
+                "answer_s": 0.0,
+                "non_answer_s": float(vector_retrieval_s),
+            }
+            timing_breakdown_by_method["graph"] = {
+                "total_s": float(graph_retrieval_s),
+                "retrieval_s": float(graph_retrieval_s),
+                "answer_s": 0.0,
+                "non_answer_s": float(graph_retrieval_s),
+            }
+            timing_breakdown_by_method["hybrid"] = {
+                "total_s": float(hybrid_retrieval_s),
+                "retrieval_s": float(hybrid_retrieval_s),
+                "answer_s": 0.0,
+                "non_answer_s": float(hybrid_retrieval_s),
+            }
         
         return QueryResult(
             query_id=query_id,
@@ -276,7 +377,9 @@ class IREvaluator:
             answers_by_method=answers_by_method,
             chunks_by_method=chunks_by_method,
             pooled_chunks=pooled_chunks,
-            relevance_labels=None  # Will be filled after manual labeling
+            relevance_labels=None,  # Will be filled after manual labeling
+            timing_by_method=timing_by_method,
+            timing_breakdown_by_method=timing_breakdown_by_method,
         )
     
     def calculate_ir_metrics(

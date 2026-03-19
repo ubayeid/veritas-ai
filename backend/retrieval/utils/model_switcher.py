@@ -12,19 +12,18 @@ from .model_config import (
     EMBEDDING_MODEL,
     LOCAL_EMBEDDING_MODEL,
     LLM_MODEL,
-    XAI_LLM_MODEL,
 )
 
 
-def switch_to_grok_llm():
-    """Switch LLM to Grok (xAI) while keeping embeddings."""
+def switch_to_anthropic_llm():
+    """Switch LLM to Anthropic Claude while keeping embeddings."""
     print("\n" + "="*80)
-    print("SWITCHING TO GROK (xAI) FOR LLM")
+    print("SWITCHING TO ANTHROPIC CLAUDE FOR LLM")
     print("="*80)
-    print("\nTo use Grok for answer generation:")
-    print("1. Set API_PROVIDER=xai in .env")
-    print("2. Set XAI_API_KEY=your_xai_key in .env")
-    print("3. Set XAI_LLM_MODEL=grok-3 (or grok-2) in .env")
+    print("\nTo use Anthropic Claude for answer generation:")
+    print("1. Set API_PROVIDER=anthropic in .env")
+    print("2. Set ANTHROPIC_API_KEY=your_anthropic_key in .env")
+    print("3. Set ANTHROPIC_LLM_MODEL=claude-3-5-sonnet-20241022 in .env")
     print("\nEmbeddings will use OpenAI (recommended)")
     print("="*80 + "\n")
 
@@ -55,7 +54,7 @@ def switch_to_openai_all():
     print("1. Set API_PROVIDER=openai in .env")
     print("2. Set EMBEDDING_MODE=api in .env")
     print("3. Set EMBEDDING_MODEL=text-embedding-3-small in .env")
-    print("4. Set LLM_MODEL=gpt-4 (or gpt-4-turbo, gpt-4o) in .env")
+    print("4. Set LLM_MODEL=gpt-4o-mini (or gpt-4, gpt-4-turbo, gpt-4o) in .env")
     print("="*80 + "\n")
 
 
@@ -72,11 +71,11 @@ def get_quick_switch_guide() -> Dict[str, str]:
         Dictionary with scenario names and .env configurations
     """
     return {
-        "grok_llm_openai_embeddings": """
-# Grok for LLM, OpenAI for embeddings
-API_PROVIDER=xai
-XAI_API_KEY=your_xai_key
-XAI_LLM_MODEL=grok-3
+        "anthropic_llm_openai_embeddings": """
+# Anthropic Claude for LLM, OpenAI for embeddings
+API_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_anthropic_key
+ANTHROPIC_LLM_MODEL=claude-3-5-sonnet-20241022
 EMBEDDING_MODE=api
 EMBEDDING_MODEL=text-embedding-3-small
 USE_OPENAI_FOR_EMBEDDINGS=true
@@ -86,22 +85,22 @@ USE_OPENAI_FOR_EMBEDDINGS=true
 EMBEDDING_MODE=local
 LOCAL_EMBEDDING_MODEL=all-MiniLM-L6-v2
 API_PROVIDER=openai
-LLM_MODEL=gpt-4
+LLM_MODEL=gpt-4o-mini
         """,
-        "local_embeddings_grok_llm": """
-# Local embeddings, Grok LLM
+        "local_embeddings_anthropic_llm": """
+# Local embeddings, Anthropic Claude LLM
 EMBEDDING_MODE=local
 LOCAL_EMBEDDING_MODEL=all-MiniLM-L6-v2
-API_PROVIDER=xai
-XAI_API_KEY=your_xai_key
-XAI_LLM_MODEL=grok-3
+API_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_anthropic_key
+ANTHROPIC_LLM_MODEL=claude-3-5-sonnet-20241022
         """,
         "openai_all": """
 # Everything OpenAI
 API_PROVIDER=openai
 EMBEDDING_MODE=api
 EMBEDDING_MODEL=text-embedding-3-small
-LLM_MODEL=gpt-4
+LLM_MODEL=gpt-4o-mini
         """,
     }
 
@@ -115,8 +114,8 @@ if __name__ == "__main__":
         
         if command == "show":
             show_current_config()
-        elif command == "grok":
-            switch_to_grok_llm()
+        elif command == "anthropic":
+            switch_to_anthropic_llm()
         elif command == "local":
             switch_to_local_embeddings()
         elif command == "openai":
@@ -132,6 +131,6 @@ if __name__ == "__main__":
             print("="*80 + "\n")
         else:
             print(f"Unknown command: {command}")
-            print("Usage: python model_switcher.py [show|grok|local|openai|guide]")
+            print("Usage: python model_switcher.py [show|anthropic|local|openai|guide]")
     else:
         show_current_config()

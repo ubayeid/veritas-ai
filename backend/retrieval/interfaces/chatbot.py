@@ -558,7 +558,7 @@ Examples:
                     print("   Check NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD in .env")
                 elif 'api' in error_str or 'rate limit' in error_str or 'quota' in error_str:
                     print("\n💡 Tip: Check your API key and balance.")
-                    print("   Verify OPENAI_API_KEY or XAI_API_KEY in .env")
+                    print("   Verify OPENAI_API_KEY or ANTHROPIC_API_KEY in .env")
                 elif 'faiss' in error_str or 'index' in error_str or 'database' in error_str:
                     print("\n💡 Tip: FAISS indexes may not be built.")
                     print("   Run: python backend/indexing/faiss/build_faiss_index.py")

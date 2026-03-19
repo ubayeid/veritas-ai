@@ -41,6 +41,13 @@ def run_interactive(mode: str = "vector"):
             chatbot.hybrid_engine.graph_engine.close()
 
 
+def run_api_server(host: str = "0.0.0.0", port: int = 5000):
+    """Run the Flask API server (retrieval public entrypoint)."""
+    # Import inside function to keep startup fast for other commands
+    from backend.retrieval.interfaces.api_server import app
+    app.run(host=host, port=port, debug=False)
+
+
 def run_agent_orchestration():
     """Run multi-agent orchestration system."""
     # Lazy import to avoid loading agents unless needed
@@ -189,6 +196,9 @@ Examples:
   # Interactive query/answer (vector mode - default)
   python query.py interactive
   
+  # Start API server
+  python query.py api --port 5000
+  
   # Interactive query/answer (graph mode)
   python query.py interactive --mode graph
   
@@ -225,6 +235,24 @@ Examples:
     agent_parser = subparsers.add_parser(
         'agent',
         help='Run multi-agent orchestration system (4-agent architecture)'
+    )
+
+    # API server command
+    api_parser = subparsers.add_parser(
+        'api',
+        help='Run the retrieval API server (Flask)'
+    )
+    api_parser.add_argument(
+        '--host',
+        type=str,
+        default='0.0.0.0',
+        help='Host interface to bind (default: 0.0.0.0)'
+    )
+    api_parser.add_argument(
+        '--port',
+        type=int,
+        default=5000,
+        help='Port to listen on (default: 5000)'
     )
     
     # Evaluation command
@@ -269,6 +297,10 @@ Examples:
     
     if args.command == 'interactive':
         run_interactive(mode=args.mode)
+    elif args.command == 'api':
+        run_api_server(host=args.host, port=args.port)
+    elif args.command == 'agent':
+        run_agent_orchestration()
     elif args.command == 'evaluate':
         run_evaluation(
             queries_file=args.queries,

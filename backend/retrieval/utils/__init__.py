@@ -23,6 +23,7 @@ from .model_config import (
 from .api_client import (
     get_api_client,
     get_embedding_client,
+    get_langchain_llm,
 )
 from .local_embeddings import (
     generate_local_embedding,
@@ -32,7 +33,7 @@ from .local_embeddings import (
 )
 from .neo4j_queries import KnowledgeGraphQueries
 from .model_switcher import (
-    switch_to_grok_llm,
+    switch_to_anthropic_llm,
     switch_to_local_embeddings,
     switch_to_openai_all,
     show_current_config,
@@ -60,6 +61,7 @@ __all__ = [
     # API Client
     'get_api_client',
     'get_embedding_client',
+    'get_langchain_llm',
     # Local Embeddings
     'generate_local_embedding',
     'is_local_embeddings_enabled',
@@ -68,7 +70,7 @@ __all__ = [
     # Neo4j
     'KnowledgeGraphQueries',
     # Model Switching
-    'switch_to_grok_llm',
+    'switch_to_anthropic_llm',
     'switch_to_local_embeddings',
     'switch_to_openai_all',
     'show_current_config',
