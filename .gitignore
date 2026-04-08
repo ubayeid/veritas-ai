@@ -123,3 +123,4 @@ Thumbs.db
 # local_settings.py
 
 PRESENTATION.md
+test_openai_key.py
