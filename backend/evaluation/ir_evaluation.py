@@ -301,7 +301,9 @@ class IREvaluator:
                     continue
                 try:
                     ans_start = time.perf_counter()
-                    method_answer, _ = self.generate_answer_with_attribution(query, method_chunks)
+                    method_answer, _ = self.generate_answer_with_attribution(
+                        query, method_chunks, top_n=top_k
+                    )
                     ans_s = time.perf_counter() - ans_start
                     if method_answer:
                         answers_by_method[method] = method_answer

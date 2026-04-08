@@ -7,7 +7,7 @@ import csv
 import sys
 import random
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from collections import defaultdict
 
 # Add project root to path
@@ -278,6 +278,185 @@ def _extract_timing_table_from_df(df: "pd.DataFrame") -> "pd.DataFrame":
     return reduced[["Query ID", "method"] + present]
 
 
+def _default_results_json_for_labeled_xlsx(labeled_xlsx: Path) -> Path:
+    """
+    Default results JSON next to evaluate.py output:
+    prefers .../data/labeling_csv/<base>_results.json (written with the chunk CSV),
+    else .../data/results_json/<base>_results.json.
+    """
+    stem = labeled_xlsx.stem
+    if stem.endswith("_scored_with_relevance"):
+        base = stem[: -len("_scored_with_relevance")]
+    else:
+        base = stem
+    data_dir = labeled_xlsx.parent.parent
+    in_labeling_csv = data_dir / "labeling_csv" / f"{base}_results.json"
+    in_results_json = data_dir / "results_json" / f"{base}_results.json"
+    if in_labeling_csv.is_file():
+        return in_labeling_csv
+    return in_results_json
+
+
+def _timing_aggregates_from_results_json(results_path: Path) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Build the same timing_metrics / per-query timing rows as from a labeled table with timing columns.
+    Prefer timing_breakdown_by_method; else use legacy timing_by_method (retrieval-only — other fields omitted in means).
+    """
+    with open(results_path, encoding="utf-8") as f:
+        results: List[Dict[str, Any]] = json.load(f)
+
+    by_method_vals: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
+    by_query_rows: List[Dict[str, Any]] = []
+
+    for entry in results:
+        qid = entry.get("query_id")
+        if qid is None:
+            continue
+        tb = entry.get("timing_breakdown_by_method") or {}
+        if tb:
+            for method_key in ("vector", "graph", "hybrid"):
+                if method_key not in tb:
+                    continue
+                t = tb[method_key]
+                row: Dict[str, Any] = {"query_id": qid, "method": method_key}
+                for col in ("total_s", "retrieval_s", "answer_s", "non_answer_s"):
+                    raw = t.get(col)
+                    try:
+                        v = float(raw) if raw is not None and raw != "" else None
+                    except (TypeError, ValueError):
+                        v = None
+                    row[col] = v
+                    if v is not None:
+                        by_method_vals[method_key][col].append(v)
+                by_query_rows.append(row)
+            continue
+
+        tm = entry.get("timing_by_method") or {}
+        for method_key in ("vector", "graph", "hybrid"):
+            if method_key not in tm:
+                continue
+            try:
+                rs = float(tm[method_key])
+            except (TypeError, ValueError):
+                continue
+            by_method_vals[method_key]["retrieval_s"].append(rs)
+            by_query_rows.append(
+                {
+                    "query_id": qid,
+                    "method": method_key,
+                    "total_s": None,
+                    "retrieval_s": rs,
+                    "answer_s": None,
+                    "non_answer_s": None,
+                }
+            )
+
+    timing_metrics: Dict[str, Dict[str, Any]] = {}
+    for method_key in ("vector", "graph", "hybrid"):
+        cols = by_method_vals.get(method_key, {})
+        if not cols:
+            continue
+        qn = len({r["query_id"] for r in by_query_rows if r.get("method") == method_key})
+        m: Dict[str, Any] = {"total_queries": qn}
+        for col in ("total_s", "retrieval_s", "answer_s", "non_answer_s"):
+            vals = cols.get(col, [])
+            if vals:
+                m[f"avg_{col}"] = float(sum(vals) / len(vals))
+        timing_metrics[method_key] = m
+
+    return timing_metrics, by_query_rows
+
+
+def _timing_lookup_from_results_list(results: List[Dict[str, Any]]) -> Dict[Tuple[str, str], Dict[str, float]]:
+    """(query_id, METHOD_UPPER) -> timing fields available from each evaluation JSON entry."""
+    lookup: Dict[Tuple[str, str], Dict[str, float]] = {}
+    cols = ("total_s", "retrieval_s", "answer_s", "non_answer_s")
+    for entry in results:
+        qid = entry.get("query_id")
+        if qid is None:
+            continue
+        qid_s = str(qid).strip()
+        tb = entry.get("timing_breakdown_by_method") or {}
+        if tb:
+            for mk in ("vector", "graph", "hybrid"):
+                if mk not in tb:
+                    continue
+                t = tb[mk]
+                d: Dict[str, float] = {}
+                for c in cols:
+                    raw = t.get(c)
+                    if raw is None or raw == "":
+                        continue
+                    try:
+                        d[c] = float(raw)
+                    except (TypeError, ValueError):
+                        continue
+                if d:
+                    lookup[(qid_s, mk.upper())] = d
+            continue
+        tm = entry.get("timing_by_method") or {}
+        for mk in ("vector", "graph", "hybrid"):
+            if mk not in tm:
+                continue
+            try:
+                rs = float(tm[mk])
+            except (TypeError, ValueError):
+                continue
+            lookup[(qid_s, mk.upper())] = {"retrieval_s": rs}
+    return lookup
+
+
+def merge_timing_from_results_json_into_labeled_xlsx(
+    labeled_xlsx: Path,
+    results_json: Optional[Path] = None,
+) -> None:
+    """
+    Add/update total_s, retrieval_s, answer_s, non_answer_s on every sheet that has Query ID + Method.
+    Preserves other sheets/columns (e.g. Relevance). Overwrites the workbook in place.
+    """
+    labeled_xlsx = labeled_xlsx.resolve()
+    if results_json is None:
+        results_json = _default_results_json_for_labeled_xlsx(labeled_xlsx).resolve()
+    else:
+        results_json = results_json.resolve()
+
+    if not labeled_xlsx.is_file():
+        raise FileNotFoundError(str(labeled_xlsx))
+    if not results_json.is_file():
+        raise FileNotFoundError(str(results_json))
+
+    with open(results_json, encoding="utf-8") as f:
+        results: List[Dict[str, Any]] = json.load(f)
+    lookup = _timing_lookup_from_results_list(results)
+    timing_cols = ["total_s", "retrieval_s", "answer_s", "non_answer_s"]
+
+    xl = pd.ExcelFile(labeled_xlsx)
+    sheets: Dict[str, "pd.DataFrame"] = {
+        name: pd.read_excel(labeled_xlsx, sheet_name=name) for name in xl.sheet_names
+    }
+    xl.close()
+
+    with pd.ExcelWriter(labeled_xlsx, engine="openpyxl") as writer:
+        for sheet_name, df in sheets.items():
+            if "Query ID" not in df.columns or "Method" not in df.columns:
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                continue
+            for c in timing_cols:
+                if c not in df.columns:
+                    df[c] = float("nan")
+            for idx in df.index:
+                key = (
+                    str(df.at[idx, "Query ID"]).strip(),
+                    str(df.at[idx, "Method"]).strip().upper(),
+                )
+                if key not in lookup:
+                    continue
+                for c, v in lookup[key].items():
+                    if c in df.columns:
+                        df.at[idx, c] = v
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+
 def _compute_effective_k(df: "pd.DataFrame", requested_k: int) -> int:
     if "Rank" not in df.columns:
         return requested_k
@@ -512,6 +691,13 @@ def generate_ir_metrics_report(
                         "non_answer_s": float(r["non_answer_s"]),
                     }
                 )
+        else:
+            results_json = _default_results_json_for_labeled_xlsx(file_path)
+            if results_json.exists():
+                timing_metrics, json_qrows = _timing_aggregates_from_results_json(results_json)
+                for r in json_qrows:
+                    timing_by_query_rows.append({"dataset": dataset_key, **r})
+                report.setdefault("timing_fallback", {})[dataset_key] = str(results_json)
 
         report["datasets"][dataset_key] = {
             "file": str(file_path),
@@ -630,8 +816,31 @@ def main():
                         help='Permutation count for significance tests (default: 10000)')
     parser.add_argument('--report-seed', type=int, default=42,
                         help='Random seed for significance tests (default: 42)')
-    
+    parser.add_argument(
+        '--merge-timing-xlsx',
+        type=str,
+        default=None,
+        help='Labeled workbook to update in-place with timing columns from results JSON (see --merge-timing-results).',
+    )
+    parser.add_argument(
+        '--merge-timing-results',
+        type=str,
+        default=None,
+        help='Evaluation results JSON (default: data/results_json/<stem>_results.json derived from xlsx name).',
+    )
+
     args = parser.parse_args()
+
+    if args.merge_timing_xlsx:
+        lx = Path(args.merge_timing_xlsx)
+        if not lx.is_absolute():
+            lx = project_root / lx
+        rj = Path(args.merge_timing_results) if args.merge_timing_results else None
+        if rj is not None and not rj.is_absolute():
+            rj = project_root / rj
+        merge_timing_from_results_json_into_labeled_xlsx(lx, rj)
+        print(f"Timing columns merged into: {lx}")
+        return
 
     if args.report:
         data_dir = Path(args.report_data_dir)
@@ -642,7 +851,7 @@ def main():
             out_dir = project_root / args.report_out_dir
 
         datasets = {
-            "combined": data_dir / "chunks_for_labeling_combined_scored_with_relevance.xlsx",
+            "combined": data_dir / "chunks_for_labeling_combined_top8_for_scoring_scored_with_relevance.xlsx",
             "aiid": data_dir / "chunks_for_labeling_aiid_scored_with_relevance.xlsx",
             "std": data_dir / "chunks_for_labeling_standards_scored_with_relevance.xlsx",
             "company": data_dir / "chunks_for_labeling_company_scored_with_relevance.xlsx",

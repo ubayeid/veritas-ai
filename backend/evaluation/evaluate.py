@@ -357,8 +357,8 @@ def run_retrieval_evaluation(
     
     # Export to CSV
     if export_chunks:
-        # Export chunks for manual review
-        export_chunks_to_csv(all_results, output_csv)
+        # Same timing columns as --db company|aiid|standards (for reports / Excel joins)
+        export_chunks_to_csv_with_timing(all_results, output_csv)
     else:
         # Export answers only (original format)
         rows = []
@@ -446,7 +446,7 @@ def run_retrieval_evaluation_by_db(
         if generate_answer and vector_chunk_objs:
             ans_start = time.perf_counter()
             vec_ans, _ = evaluator.generate_answer_with_attribution(
-                query, vector_chunk_objs, top_n=min(8, len(vector_chunk_objs))
+                query, vector_chunk_objs, top_n=top_k
             )
             vec_ans_s = time.perf_counter() - ans_start
         vec_total_s = time.perf_counter() - vec_total_start
@@ -463,7 +463,7 @@ def run_retrieval_evaluation_by_db(
         if generate_answer and graph_chunk_objs:
             ans_start = time.perf_counter()
             graph_ans, _ = evaluator.generate_answer_with_attribution(
-                query, graph_chunk_objs, top_n=min(8, len(graph_chunk_objs))
+                query, graph_chunk_objs, top_n=top_k
             )
             graph_ans_s = time.perf_counter() - ans_start
         graph_total_s = time.perf_counter() - graph_total_start
@@ -487,36 +487,43 @@ def run_retrieval_evaluation_by_db(
         if generate_answer and hybrid_chunk_objs:
             ans_start = time.perf_counter()
             hybrid_ans, _ = evaluator.generate_answer_with_attribution(
-                query, hybrid_chunk_objs, top_n=min(8, len(hybrid_chunk_objs))
+                query, hybrid_chunk_objs, top_n=top_k
             )
             hybrid_ans_s = time.perf_counter() - ans_start
         hybrid_total_s = time.perf_counter() - hybrid_total_start
+
+        timing_breakdown_by_method = {
+            "vector": {
+                "total_s": float(vec_total_s),
+                "retrieval_s": float(vec_ret_s),
+                "answer_s": float(vec_ans_s),
+                "non_answer_s": float(vec_total_s - vec_ans_s),
+            },
+            "graph": {
+                "total_s": float(graph_total_s),
+                "retrieval_s": float(graph_ret_s),
+                "answer_s": float(graph_ans_s),
+                "non_answer_s": float(graph_total_s - graph_ans_s),
+            },
+            "hybrid": {
+                "total_s": float(hybrid_total_s),
+                "retrieval_s": float(hybrid_ret_s),
+                "answer_s": float(hybrid_ans_s),
+                "non_answer_s": float(hybrid_total_s - hybrid_ans_s),
+            },
+        }
+        # Match --db all (`IREvaluator.evaluate_query`): timing_by_method is retrieval-only.
+        timing_by_method = {
+            m: timing_breakdown_by_method[m]["retrieval_s"] for m in ("vector", "graph", "hybrid")
+        }
 
         result_dict = {
             "query_id": query_id,
             "query": query,
             "query_type": query_type,
             "answers_by_method": {"vector": vec_ans, "graph": graph_ans, "hybrid": hybrid_ans},
-            "timing_breakdown_by_method": {
-                "vector": {
-                    "total_s": float(vec_total_s),
-                    "retrieval_s": float(vec_ret_s),
-                    "answer_s": float(vec_ans_s),
-                    "non_answer_s": float(vec_total_s - vec_ans_s),
-                },
-                "graph": {
-                    "total_s": float(graph_total_s),
-                    "retrieval_s": float(graph_ret_s),
-                    "answer_s": float(graph_ans_s),
-                    "non_answer_s": float(graph_total_s - graph_ans_s),
-                },
-                "hybrid": {
-                    "total_s": float(hybrid_total_s),
-                    "retrieval_s": float(hybrid_ret_s),
-                    "answer_s": float(hybrid_ans_s),
-                    "non_answer_s": float(hybrid_total_s - hybrid_ans_s),
-                },
-            },
+            "timing_by_method": timing_by_method,
+            "timing_breakdown_by_method": timing_breakdown_by_method,
             "chunks_by_method": {
                 "vector": [_chunk_to_row(c) for c in vector_chunk_objs],
                 "graph": [_chunk_to_row(c) for c in graph_chunk_objs],
@@ -764,7 +771,10 @@ def main():
         output_csv = args.output.strip() if args.output else ''
         if not output_csv:
             if args.db == 'all':
-                output_csv = 'backend/evaluation/data/labeling_csv/chunks_for_labeling_combined.csv'
+                output_csv = (
+                    'backend/evaluation/data/labeling_csv/'
+                    'chunks_for_labeling_combined_top8_for_scoring.csv'
+                )
             else:
                 output_csv = f'backend/evaluation/data/labeling_csv/chunks_for_labeling_{args.db}.csv'
 
